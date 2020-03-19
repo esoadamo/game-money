@@ -16,9 +16,7 @@ function processMessage(type, msg) {
 
 
 window.addEventListener('load', () => {
-    const renderer = new Renderer({playerName: 'Adamek', hero: true});
-    renderer.render();
-    renderer.render();
+    const renderer = new Renderer({playerName: 'Adamek', hero: true}, {input: 'Muj input'});
     renderer.render();
     const comm = new Comm();
     comm.onMessage = processMessage;
