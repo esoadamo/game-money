@@ -34,6 +34,23 @@ class User(db.Model):
     key = db.Column(db.String, nullable=False)
 
 
+class GameType(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    config = db.Column(db.String, nullable=False)
+
+
+class Game(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    password = db.Column(db.String)
+
+    game_type_id = db.Column(db.Integer, db.ForeignKey('game_type.id'), nullable=False)
+    game_type = db.relationship('GameType', backref=db.backref('games', lazy=True))
+    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner = db.relationship('User', backref=db.backref('users', lazy=True))
+
+
 MOCK_GAME = {
     'name': 'My Game',
     'players': []
@@ -114,6 +131,12 @@ class GameClient(SocketComm):
             self.user.name = message
             db.session.commit()
             return 'nameChange', self.user.name
+        elif message_type == 'listGameTypes':
+            r = []
+            for t in GameType.query.all():
+                r.append(t.name)
+            print(r)
+            return 'openNewGameModal', r
 
     def on_disconnect(self):
         print('Disconnected')

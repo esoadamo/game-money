@@ -49,7 +49,10 @@ function Renderer(variables = null, values = null, functions = null) {
                 renderedEl.removeAttribute('r-if');
                 renderedEl.setAttribute('r-child', el.dataset.index);
                 renderedEl.setAttribute('r-if-child', el.getAttribute('r-if'));
+                renderedEl.removeAttribute('hidden');
+                renderedEl.removeAttribute('disabled');
 
+                this.renderElementHeaders(renderedEl, localVariables);
                 this.renderString(renderedEl, el.dataset.content);
 
                 el.parentElement.insertBefore(renderedEl, el);
@@ -69,11 +72,14 @@ function Renderer(variables = null, values = null, functions = null) {
                 delete renderedEl.dataset.content;
                 renderedEl.removeAttribute('r-for');
                 renderedEl.setAttribute('r-child', el.dataset.index);
-                renderedEl.setAttribute('r-if-child', el.getAttribute('r-for'));
+                renderedEl.setAttribute('r-for-child', el.getAttribute('r-for'));
+                renderedEl.removeAttribute('hidden');
+                renderedEl.removeAttribute('disabled');
 
                 const localVariablesCopy = Object.assign({}, localVariables);
                 localVariablesCopy[forVar] = x;
                 this.renderString(renderedEl, el.dataset.content, localVariablesCopy);
+                this.renderElementHeaders(renderedEl, localVariablesCopy);
 
                 el.parentElement.insertBefore(renderedEl, el);
             });
@@ -84,6 +90,30 @@ function Renderer(variables = null, values = null, functions = null) {
         el.innerHTML = str;
         this.render(el, localVariables);
         return el.innerHTML;
+    };
+
+    this.renderElementHeaders = (el, localVariables = null) => {
+        // noinspection JSUnusedLocalSymbols
+        const v = this.variables;
+        // noinspection JSUnusedLocalSymbols
+        const l = localVariables;
+        // noinspection JSUnusedLocalSymbols
+        const w = this.values;
+        // noinspection JSUnusedLocalSymbols
+        const f = this.functions;
+
+        const rVal = el.getAttribute('r-val');
+        const rAttr = el.getAttribute('r-attr');
+
+        if (rVal !== null) {
+            console.log('cont',  eval(el.getAttribute('r-val')));
+            el.textContent = eval(el.getAttribute('r-val'));
+        }
+        if (rAttr !== null) {
+            console.log(rAttr);
+            const attrs = JSON.parse(rAttr);
+            Object.keys(attrs).forEach(attr => el.setAttribute(attr, eval(attrs[attr])));
+        }
     };
 
     this.fetchAllValues = () => {
@@ -140,6 +170,8 @@ function Renderer(variables = null, values = null, functions = null) {
         el.dataset.content = el.innerHTML.trim();
         el.dataset.index = `${i}`;
         el.dataset.parsed = '1';
+        el.setAttribute('hidden', 'true');
+        el.setAttribute('disabled', 'true');
         el.classList.add('r-hidden');
         el.innerHTML = '';
     });
@@ -149,7 +181,7 @@ function Renderer(variables = null, values = null, functions = null) {
     style.innerHTML = `
     .r-hidden {
         visibility: hidden !important;
-        position: absolute !important;
+        position: fixed !important;
         width: 0 !important;
         height: 0 !important;
         overflow: hidden !important;

@@ -29,7 +29,7 @@
                     </tr>
                     <tr>
                         <td colspan="9001"> <!-- it's over nine thousands -->
-                            <button class="btn">
+                            <button class="btn" r-click="f.modalNewGame()">
                                 <i class="fa fa-plus"></i>
                                 Create new game
                             </button>
@@ -38,6 +38,40 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block modals %}
+    <div class="modal fade" role="dialog" id="modalNewGame">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Create a new game</h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="game-type">Game type:</label>
+                            <select id="game-type" r-val="w.gameType">
+                                <option r-for="type of v.gameTypes"
+                                        r-val="l.type"
+                                        r-attr="{&quot;value&quot;: &quot;l.type&quot;}">
+                                </option>
+                            </select>
+
+                            <label for="game-password">Join password:</label>
+                            <input id="game-password" type="password" r-val="w.gamePassword">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-dismiss="modal">Create</button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+
         </div>
     </div>
 {% endblock %}
@@ -55,6 +89,9 @@
                     }
                 });
             };
+            renderer.functions.modalNewGame = () => {
+                comm.send('listGameTypes', '');
+            };
 
             function onMessage(type, msg) {
                 switch (type) {
@@ -70,6 +107,11 @@
                         break;
                     case 'nameChange':
                         renderer.variables.playerName = msg;
+                        renderer.render();
+                        break;
+                    case 'openNewGameModal':
+                        renderer.variables.gameTypes = msg;
+                        $('#modalNewGame').modal('show');
                         renderer.render();
                         break;
                 }
