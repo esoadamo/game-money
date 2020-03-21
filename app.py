@@ -103,8 +103,11 @@ class GameClient(SocketComm):
                 u = User.query.filter_by(key=message).first()
                 if u is None:
                     return
+                self.logged_in = True
                 return 'login', u.name
             return
+        if message_type == 'listGames':
+            return 'listGames', [{'id': 1, 'name': 'Moje Hra', 'game': 'Monopoly'}]
 
     def on_disconnect(self):
         print('Disconnected')

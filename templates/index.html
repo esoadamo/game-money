@@ -1,13 +1,51 @@
 {% extends 'base.html' %}
 {% block content %}
-    <h1>Welcome, <span r-var="v.playerName"></span></h1>
+    <div class="container">
+        <div class="col-xs-12"><h1>Welcome, <span r-var="v.playerName"></span></h1></div>
+        <div class="col-xs-12"><h2>Please, select one of the games:</h2></div>
+        <div class="col-xs-12">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th>Game</th>
+                        <th>Name</th>
+                        <th>Join</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr r-for="row of v.games">
+                        <td><span r-var="l.row.game"></span></td>
+                        <td><span r-var="l.row.name"></span></td>
+                        <td><i class="fa fa-sign-in" r-click="f.enter(l.row.id)"></i></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block script %}
     <script>
-    loginComplete = (comm, renderer) => {
-      renderer.render();
-      console.log('logged in');
-    };
+        loginComplete = (comm, renderer) => {
+            renderer.functions.enter = (roomId) => {
+                alert(`entering ${roomId}`);
+            };
+
+            function onMessage(type, msg) {
+                console.log('games receive');
+                switch (type) {
+                    case 'listGames':
+                        renderer.variables.games = msg;
+                        renderer.render();
+                }
+            }
+
+            renderer.render();
+            comm.onMessage = onMessage;
+            console.log('logged in');
+            comm.send("listGames", "");
+        };
     </script>
 {% endblock %}

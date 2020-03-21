@@ -2,14 +2,15 @@ function askText(message) {
     return new Promise(resolve => resolve(prompt(message)));
 }
 
+// noinspection JSUnusedLocalSymbols
 let loginComplete = (comm, renderer) => {};
 
 window.addEventListener('load', () => {
     const comm = new Comm();
     const renderer = new Renderer();
-    comm.onMessage = processMessage;
+    comm.onMessage = basicMessages;
 
-    function processMessage(type, msg) {
+    function basicMessages(type, msg) {
         switch (type) {
             case 'register':
                 console.log('registered as', msg);

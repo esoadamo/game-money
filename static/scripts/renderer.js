@@ -1,6 +1,7 @@
-function Renderer(variables = null, values = null) {
+function Renderer(variables = null, values = null, functions = null) {
     this.variables = variables === null ? {} : variables;
     this.values = values === null ? {} : values;
+    this.functions = functions === null ? {} : functions;
 
     this.render = (element = null, localVariables = null) => {
         if (element === null) element = document.body;
@@ -12,10 +13,19 @@ function Renderer(variables = null, values = null) {
         const l = localVariables;
         // noinspection JSUnusedLocalSymbols
         const w = this.values;
+        // noinspection JSUnusedLocalSymbols
+        const f = this.functions;
 
         // delete all previously rendered
         element.querySelectorAll('[r-child]').forEach(el =>
             el.parentElement.removeChild(el)
+        );
+
+        // assign clicks
+        element.querySelectorAll('[r-click]').forEach(el =>
+            el.onclick = () => {
+                eval(el.getAttribute('r-click'));
+            }
         );
 
         // render all variables
@@ -50,7 +60,7 @@ function Renderer(variables = null, values = null) {
         element.querySelectorAll('[r-for]').forEach(el => {
             const parts = el.getAttribute('r-for').split(' of ');
             const forVar = parts[0];
-            const array = eval(parts[1]);
+            const array = eval(parts[1]) || [];
 
             array.forEach(x => {
                 const renderedEl = el.cloneNode(false);
@@ -87,7 +97,8 @@ function Renderer(variables = null, values = null) {
             const variable = el.getAttribute('r-val');
             try {
                 eval(`${variable} = currValue;`);
-            } catch {}
+            } catch {
+            }
         });
     };
 
@@ -109,7 +120,7 @@ function Renderer(variables = null, values = null) {
 
     this.setValue = (value, valueValue) => {
         this.values[value] = valueValue;
-       document.querySelectorAll(`[r-val="w.${value}"]`).forEach(el => el.value = valueValue);
+        document.querySelectorAll(`[r-val="w.${value}"]`).forEach(el => el.value = valueValue);
     };
 
     if (!!Object.keys(this.values).length) {
