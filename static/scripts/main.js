@@ -2,31 +2,32 @@ function askText(message) {
     return new Promise(resolve => resolve(prompt(message)));
 }
 
-
-
-function processMessage(type, msg) {
-    switch (type) {
-        case 'register':
-            localStorage.setItem('gameMoneyId', msg);
-            break;
-    }
-}
-
-// Chronological code
-
+let loginComplete = (comm, renderer) => {};
 
 window.addEventListener('load', () => {
-    const renderer = new Renderer({playerName: 'Adamek', hero: true}, {input: 'Muj input'});
-    renderer.render();
     const comm = new Comm();
+    const renderer = new Renderer();
     comm.onMessage = processMessage;
 
-    return;
+    function processMessage(type, msg) {
+        switch (type) {
+            case 'register':
+                console.log('registered as', msg);
+                localStorage.setItem('gameMoneyId', msg);
+                comm.send('login', msg);
+                break;
+            case 'login':
+                renderer.variables.playerName = msg;
+                loginComplete(comm, renderer);
+        }
+    }
 
     let localId = localStorage.getItem('gameMoneyId');
     if (localId === null) {
         askText("Enter your name").then(name => {
             comm.send("register", name);
         })
+    } else {
+       comm.send('login', localId);
     }
 });

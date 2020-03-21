@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!--suppress HtmlUnknownTag -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Game Money</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/static/game.css">
+    <link rel="stylesheet" href="/static/root.css">
+    <script src="/static/scripts/comm.js"></script>
+    <script src="/static/scripts/renderer.js"></script>
+    <script src="/static/scripts/main.js"></script>
+</head>
+<body>
+<div class="game-content">
+    <div class="game-name container">
+        <input id="'i" r-val="w.input">
+        <div class="col-md-8"><h1>{{ game['name'] }}</h1></div>
+        <div class="col-md-4"><h2 r-var="v.playerName"></h2><h3 r-if="v.hero"> is a hero!</h3></div>
+    </div>
+    <div class="center-block">
+        <div class="table-responsive">
+            <table class="table goods-table">
+                <tbody>
+                    <tr r-for="name of [1, 2, 3]">
+                        <td r-var="l.name"></td>
+                        <td>  good['value'] if not player['infinite'] else '∞' </td>
+                        <td> good['name'] </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="btns">
+            <i class="fa fa-share-square btn"></i>
+        </div>
+    </div>
+    <div class="table-responsive bottom-history">
+    </div>
+</div>
+
+</body>
+</html>

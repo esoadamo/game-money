@@ -1,10 +1,15 @@
 import json
-from typing import Optional
+import sys
+
+from os import path
+from typing import Optional, Tuple
+from uuid import uuid4 as uuid
 
 from flask import Flask, render_template, Blueprint
 from flask_sockets import Sockets
 from gevent import monkey
 from geventwebsocket.websocket import WebSocket
+from flask_sqlalchemy import SQLAlchemy
 
 monkey.patch_all()
 
@@ -14,7 +19,20 @@ soc = Blueprint(r'soc', __name__)
 
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.abspath(path.join(sys.argv[0], path.pardir,
+                                                                               'data', 'db.sqlite'))
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+db = SQLAlchemy(app)
 sockets = Sockets(app)
+
+print(app.config["SQLALCHEMY_DATABASE_URI"])
+
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    key = db.Column(db.String, nullable=False)
+
 
 MOCK_GAME = {
     'name': 'My Game',
@@ -38,7 +56,9 @@ class SocketComm:
             try:
                 msg: Optional[str] = self.__soc.receive()
                 data: dict = json.loads(msg)
-                self.on_data(data)
+                r = self.on_data(data)
+                if type(r) == dict:
+                    self.send_dict(r)
             except (json.JSONDecodeError, TypeError):
                 pass
         self.on_disconnect()
@@ -49,7 +69,7 @@ class SocketComm:
     def on_disconnect(self):
         pass
 
-    def on_data(self, data: dict):
+    def on_data(self, data: dict) -> Optional[dict]:
         pass
 
     def send_dict(self, data: dict):
@@ -57,11 +77,34 @@ class SocketComm:
 
 
 class GameClient(SocketComm):
-    def on_connect(self):
-        print('client connected')
+    def __init__(self, ws: WebSocket):
+        super().__init__(ws)
+        self.logged_in = False
 
-    def on_data(self, data: dict):
-        print('got variables', data)
+    def on_data(self, data: dict) -> Optional[dict]:
+        print('in', data)
+        message_type = data.get('type')
+        message = data.get('message')
+        if message_type is None or message is None:
+            return
+
+        r = self.on_message(message_type, message)
+        if r is not None:
+            return {'type': r[0], 'message': r[1]}
+
+    def on_message(self, message_type: str, message: any) -> Optional[Tuple[str, any]]:
+        if not self.logged_in:
+            if message_type == 'register':
+                u = User(name=message, key=uuid().hex)
+                db.session.add(u)
+                db.session.commit()
+                return 'register', u.key
+            if message_type == 'login':
+                u = User.query.filter_by(key=message).first()
+                if u is None:
+                    return
+                return 'login', u.name
+            return
 
     def on_disconnect(self):
         print('Disconnected')
@@ -82,7 +125,9 @@ def main():
     from gevent import pywsgi
     from geventwebsocket.handler import WebSocketHandler
 
-    server = pywsgi.WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+    db.create_all()
+
+    server = pywsgi.WSGIServer(('127.0.0.1', 5000), app, handler_class=WebSocketHandler)
     print('running')
     server.serve_forever()
 
