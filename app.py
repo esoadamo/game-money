@@ -80,6 +80,7 @@ class GameClient(SocketComm):
     def __init__(self, ws: WebSocket):
         super().__init__(ws)
         self.logged_in = False
+        self.user: Optional[User] = None
 
     def on_data(self, data: dict) -> Optional[dict]:
         print('in', data)
@@ -104,10 +105,15 @@ class GameClient(SocketComm):
                 if u is None:
                     return
                 self.logged_in = True
+                self.user = u
                 return 'login', u.name
             return
         if message_type == 'listGames':
             return 'listGames', [{'id': 1, 'name': 'Moje Hra', 'game': 'Monopoly'}]
+        elif message_type == 'nameChange':
+            self.user.name = message
+            db.session.commit()
+            return 'nameChange', self.user.name
 
     def on_disconnect(self):
         print('Disconnected')

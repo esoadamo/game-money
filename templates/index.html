@@ -1,7 +1,15 @@
 {% extends 'base.html' %}
 {% block content %}
     <div class="container">
-        <div class="col-xs-12"><h1>Welcome, <span r-var="v.playerName"></span></h1></div>
+        <div class="col-xs-12">
+            <h1>Welcome,
+                <span
+                        class="clickable"
+                        r-var="v.playerName"
+                        r-click="f.changeName()"
+                ></span>
+            </h1>
+        </div>
         <div class="col-xs-12"><h2>Please, select one of the games:</h2></div>
         <div class="col-xs-12">
             <div class="table-responsive">
@@ -17,7 +25,15 @@
                     <tr r-for="row of v.games">
                         <td><span r-var="l.row.game"></span></td>
                         <td><span r-var="l.row.name"></span></td>
-                        <td><i class="fa fa-sign-in" r-click="f.enter(l.row.id)"></i></td>
+                        <td><i class="btn fa fa-sign-in" r-click="f.enter(l.row.id)"></i></td>
+                    </tr>
+                    <tr>
+                        <td colspan="9001"> <!-- it's over nine thousands -->
+                            <button class="btn">
+                                <i class="fa fa-plus"></i>
+                                Create new game
+                            </button>
+                        </td>
                     </tr>
                     </tbody>
                 </table>
@@ -32,13 +48,30 @@
             renderer.functions.enter = (roomId) => {
                 alert(`entering ${roomId}`);
             };
+            renderer.functions.changeName = () => {
+                askText("How do you wish to be named?").then(r => {
+                    if (r) {
+                        comm.send("nameChange", r);
+                    }
+                });
+            };
 
             function onMessage(type, msg) {
-                console.log('games receive');
                 switch (type) {
                     case 'listGames':
                         renderer.variables.games = msg;
                         renderer.render();
+                        break;
+                    case 'gameEnterERRR':
+                        alert(msg);
+                        break;
+                    case 'gameEnter':
+                        window.location.href = msg;
+                        break;
+                    case 'nameChange':
+                        renderer.variables.playerName = msg;
+                        renderer.render();
+                        break;
                 }
             }
 
