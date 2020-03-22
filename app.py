@@ -230,6 +230,26 @@ class GameClient(SocketComm):
             self.send_event('players', game.format_players(self.user))
             return 'gameInfo', {'name': game.name, 'id': game.id}
 
+        game_id = message.get('game')
+        game = Game.query.filter_by(id=game_id).first()
+        if game is None:
+            return 'returnHomepage', 'This game does not exist'
+        if self.user not in game.users:
+            return 'returnHomepage', 'You are not allowed to be here'
+
+        if message_type == 'playerNameChange':
+            player: Optional[GamePlayer] = GamePlayer.query.filter_by(id=message.get('player')).first()
+            if player is None:
+                return 'playerNameChangeERR', 'Player does not exist'
+            if player.user != self.user:
+                return 'playerNameChangeERR', 'Not your player'
+            name = message.get('name')
+            if not name:
+                return 'playerNameChangeERR', 'Invalid name'
+            player.name = name
+            db.session.commit()
+            return 'players', game.format_players(self.user)
+
     def send_event(self, event_type: str, event_message: any):
         return self.send_dict({'type': event_type, 'message': event_message})
 

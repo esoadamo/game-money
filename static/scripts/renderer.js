@@ -31,7 +31,9 @@ function Renderer(variables = null, values = null, functions = null) {
         // assign clicks
         element.querySelectorAll('[r-click]').forEach(el =>
             el.onclick = () => {
+                const l = localContext(el, localVariables);
                 eval(el.getAttribute('r-click'));
+                el.setAttribute('r-local-context', JSON.stringify(l));
             }
         );
 
