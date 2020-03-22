@@ -17,19 +17,26 @@ monkey.patch_all()
 html = Blueprint(r'html', __name__)
 soc = Blueprint(r'soc', __name__)
 
+script_dir = path.abspath(path.join(sys.argv[0], path.pardir))
+
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.abspath(path.join(sys.argv[0], path.pardir,
-                                                                              'data', 'db.sqlite'))
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.join(script_dir, 'data', 'db.sqlite')
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 sockets = Sockets(app)
+
+rel_game_users = db.Table('rel-game-users',
+                          db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
+                          db.Column('game_id', db.Integer, db.ForeignKey('game.id'), primary_key=True)
+                          )
 
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     key = db.Column(db.String, nullable=False)
+    games = db.relationship('Game', secondary=rel_game_users, lazy='subquery', backref=db.backref('users', lazy=True))
 
 
 class GamePlayer(db.Model):
@@ -55,7 +62,7 @@ class Game(db.Model):
     type_id = db.Column(db.Integer, db.ForeignKey('game_type.id'), nullable=False)
     type = db.relationship('GameType')
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    owner = db.relationship('User', backref=db.backref('users', lazy=True))
+    owner = db.relationship('User')
     players = db.relationship('GamePlayer', backref='game', lazy=True)
 
 
@@ -128,13 +135,21 @@ class GameClient(SocketComm):
             if message_type == 'login':
                 u = User.query.filter_by(key=message).first()
                 if u is None:
-                    return
+                    return 'unknownUser', 'I don\'t know you'
                 self.logged_in = True
                 self.user = u
                 return 'login', u.name
             return
         if message_type == 'listGames':
-            return 'listGames', [{'id': 1, 'name': 'Moje Hra', 'game': 'Monopoly'}]
+            r = []
+            for game in Game.query.all():
+                r.append({
+                    'id': game.id,
+                    'name': game.name,
+                    'game': game.type.name,
+                    'password': game.password is not None
+                })
+            return 'listGames', r
         elif message_type == 'nameChange':
             self.user.name = message
             db.session.commit()
@@ -149,8 +164,6 @@ class GameClient(SocketComm):
             game_type_id = message.get('type', '')
             game_password = message.get('password', '')
 
-            print('opening game')
-
             if not game_name or not game_type_id:
                 return 'openNewGameERR', 'Name or type not filled'
             game_type = GameType.query.filter_by(id=game_type_id).first()
@@ -160,10 +173,22 @@ class GameClient(SocketComm):
             if existing_game is not None:
                 return 'openNewGameERR', 'Game with this name already exists'
             game = Game(name=game_name, type=game_type, owner=self.user)
+            game.users.append(self.user)
             if game_password:
                 game.password = game_password
             db.session.add(game)
             db.session.commit()
+            return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
+        elif message_type == 'enterGame':
+            room_id = message.get('id')
+            room_password = message.get('password')
+            game = Game.query.filter_by(id=room_id).first()
+            if game is None:
+                return 'gameEnterERR', 'This game does not exist'
+            if game.password is not None and game.password != room_password:
+                return 'gameEnterERR', 'Wrong room password'
+            if game not in self.user.games:
+                game.users.append(self.user)
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
 
     def on_disconnect(self):
@@ -193,8 +218,20 @@ def main():
 
     db.create_all()
 
+    with open(path.join(script_dir, 'data', 'game-types.json')) as f:
+        game_types = json.load(f)
+        for game_type_name, game_type_config in game_types.items():
+            game_type_config = json.dumps(game_type_config)
+            game_type = GameType.query.filter_by(name=game_type_name).first()
+            if game_type is None:
+                game_type = GameType(name=game_type_name, config=game_type_config)
+                db.session.add(game_type)
+            else:
+                game_type.config = game_type_config
+    db.session.commit()
+
     server = pywsgi.WSGIServer(('127.0.0.1', 5000), app, handler_class=WebSocketHandler)
-    print('running')
+    print('up and running')
     server.serve_forever()
 
 

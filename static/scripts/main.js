@@ -1,4 +1,4 @@
-function askText(message) {
+function askText(message, type='text') {
     return new Promise(resolve => resolve(prompt(message)));
 }
 
@@ -20,6 +20,11 @@ window.addEventListener('load', () => {
             case 'login':
                 renderer.variables.playerName = msg;
                 loginComplete(comm, renderer);
+                break;
+            case 'unknownUser':
+                localStorage.removeItem('gameMoneyId');
+                location.reload();
+                break;
         }
     }
 

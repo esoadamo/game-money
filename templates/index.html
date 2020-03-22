@@ -25,7 +25,7 @@
                     <tr r-for="row of v.games">
                         <td><span r-var="l.row.game"></span></td>
                         <td><span r-var="l.row.name"></span></td>
-                        <td><i class="btn fa fa-sign-in" r-click="f.enter(l.row.id)"></i></td>
+                        <td><i class="btn fa fa-sign-in" r-click="f.enterGame(l.row.id, l.row.password)"></i></td>
                     </tr>
                     <tr>
                         <td colspan="9001"> <!-- it's over nine thousands -->
@@ -88,8 +88,16 @@
 {% block script %}
     <script>
         loginComplete = (comm, renderer) => {
-            renderer.functions.enter = (roomId) => {
-                alert(`entering ${roomId}`);
+            renderer.functions.enterGame = (roomId, passwordRequired) => {
+                function enter(password = null) {
+                    comm.send('enterGame', {id: roomId, password})
+                }
+
+                if (passwordRequired) {
+                    askText('Enter the room password', 'password').then(enter);
+                } else {
+                    enter();
+                }
             };
             renderer.functions.changeName = () => {
                 askText("How do you wish to be named?").then(r => {
@@ -138,7 +146,7 @@
 
             renderer.render();
             comm.onMessage = onMessage;
-            console.log('logged in');
+            console.debug('logged in');
             comm.send("listGames", "");
         };
     </script>
