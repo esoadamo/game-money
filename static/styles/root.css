@@ -17,6 +17,38 @@ html, body {
     width: 100%;
 }
 
+.popup {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+}
+
+.popup-in {
+    animation: anim-popup-in 1s;
+}
+
+.popup-out {
+    animation: anim-popup-out 1s;
+}
+
+@keyframes anim-popup-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes anim-popup-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
 .row {
     margin-top: 16px;
 }

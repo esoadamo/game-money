@@ -41,7 +41,7 @@ function Comm() {
         }
 
         if (data.type.endsWith('ERR')) {
-            alert(data.message);
+            new Popup(data.message, 5000).show();
         }
 
         this.onMessage(data.type, data.message);
