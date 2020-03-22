@@ -7,7 +7,10 @@
         <div class="col-xs-12"><h1 id="gameName" r-var="v.gameName"></h1></div>
         <div class="col-xs-12">
             <ul class="nav nav-tabs">
-                <li class="clickable" r-for="player of v.players">
+                <li class="clickable player-select"
+                    r-for="player of v.players"
+                    r-attr="{&quot;id&quot;: &quot;'playerSelector' + l.player.id&quot;}"
+                >
                     <a data-toggle="tab"
                        r-attr="{&quot;href&quot;: &quot;'#tabPlayer' + l.player.id&quot;}"
                        r-var="l.player.name"
@@ -99,10 +102,12 @@
                 }
                 const tab = document.getElementById(`tabPlayer${selectedPlayer}`);
                 if (tab) {
-                    document.querySelectorAll('.tab-player').forEach(
-                        e => e.classList.remove('active')
-                    );
+                    const removeActive = (e) => e.classList.remove('active');
+                    document.querySelectorAll('.tab-player').forEach(removeActive);
+                    document.querySelectorAll('.player-select').forEach(removeActive);
                     tab.classList.add('active');
+                    const selector = document.getElementById(`playerSelector${selectedPlayer}`);
+                    if (selector) selector.classList.add('active');
                 }
             }
 
