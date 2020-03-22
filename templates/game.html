@@ -56,7 +56,20 @@
                                     </table>
                                 </div>
                             </div>
-                            <div class="col-md-6">PLACEHOLDER</div>
+                            <div class="col-md-6">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                        <tr><th>History</th></tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr r-for="rec of v.history[l.player.id]">
+                                            <td r-var="l.rec"></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -71,6 +84,7 @@
             const pageContent = document.getElementById('pageContent');
             let gameId = null;
             let selectedPlayer = null;
+            let history = [];
 
             renderer.functions.changePlayerName = (playerID) => {
                 askText("Enter new name:").then((name) =>
@@ -111,6 +125,45 @@
                 }
             }
 
+            function updateHistory() {
+                renderer.variables.history = {};
+                if (!('players' in renderer.variables))
+                    return;
+                const playerIds = renderer.variables.playersAll || {};
+                let bankPlayerId = null;
+                renderer.variables.players.forEach(p => {
+                     renderer.variables.history[p.id] = [];
+                    if (p.infinite) {
+                        bankPlayerId = p.id;
+                    }
+                });
+                history.forEach(rec => {
+                   let p1name = null;
+                   let p2name = null;
+                   if ('p1' in rec) p1name = rec.p1 in playerIds ? playerIds[rec.p1] : 'unknown player';
+                   if ('p2' in rec) p2name = rec.p2 in playerIds ? playerIds[rec.p2] : 'unknown player';
+
+                   let text = rec.text;
+
+                   if (p1name)
+                       text = text.replace('%p1%', p1name);
+                   if (p2name)
+                       text = text.replace('%p2%', p2name);
+
+                   if (rec.all) {
+                       Object.keys(renderer.variables.history).forEach(
+                           k => renderer.variables.history[k].splice(0, 0, text)
+                       );
+                       return;
+                   }
+
+                   if (p1name && rec.p1 in renderer.variables.history) renderer.variables.history[rec.p1].splice(0, 0, text);
+                   if (p2name && rec.p2 in renderer.variables.history) renderer.variables.history[rec.p2].splice(0, 0, text);
+                   if (bankPlayerId && (!p1name || rec.p1 !== bankPlayerId) && (!p2name || rec.p2 !== bankPlayerId))
+                       renderer.variables.history[bankPlayerId].splice(0, 0, text);
+                });
+            }
+
             function onMessage(type, msg) {
                 switch (type) {
                     case 'gameInfo':
@@ -120,6 +173,25 @@
                         break;
                     case 'players':
                         renderer.variables.players = msg;
+                        updateHistory();
+                        renderer.render(pageContent);
+                        restoreSelectedPlayer();
+                        break;
+                    case 'playersAll':
+                        renderer.variables.playersAll = msg;
+                        updateHistory();
+                        renderer.render(pageContent);
+                        restoreSelectedPlayer();
+                        break;
+                    case 'history':
+                        history = msg;
+                        updateHistory();
+                        renderer.render(pageContent);
+                        restoreSelectedPlayer();
+                        break;
+                    case 'historyUpdate':
+                        history.push(msg);
+                        updateHistory();
                         renderer.render(pageContent);
                         restoreSelectedPlayer();
                         break;

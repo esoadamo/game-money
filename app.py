@@ -82,6 +82,18 @@ class Game(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     owner = db.relationship('User')
     players = db.relationship('GamePlayer', backref='game', lazy=True)
+    history_records = db.relationship('HistoryRecord', backref='game', lazy=True)
+
+    def notify_online_players(self):
+        r = self.get_all_players()
+
+        for u in self.users:
+            if u.id not in online_users:
+                continue
+            online_users[u.id].send_event('playersAll', r)
+
+    def get_all_players(self) -> Dict[int, str]:
+        return {p.id: p.name for p in self.players}
 
     def format_players(self, user: User) -> List[dict]:
         r = []
@@ -93,6 +105,57 @@ class Game(db.Model):
                 'id': ch.id
             })
         return r
+
+    def send_history(self, user: User):
+        rs = []
+        for record in self.history_records:
+            p1: GamePlayer = record.player1
+            p2: GamePlayer = record.player2
+            relevant = self.owner.id == user.id
+            if not relevant and p1 is not None and p1.user.id == user.id:
+                relevant = True
+            elif not relevant and p2 is not None and p2.user.id == user.id:
+                relevant = True
+            if not relevant:
+                continue
+            rs.append(self.format_history_record(record))
+        client = online_users.get(user.id)
+        if client is None:
+            return
+        client.send_event('history', rs)
+
+    def update_history(self, record: "HistoryRecord"):
+        self.history_records.append(record)
+        if not record.all:
+            notified_players = {record.player1, record.player2} - {None}
+            notified_users = {p.user for p in notified_players}
+        else:
+            notified_users = set(self.users)
+        for u in notified_users:
+            client = online_users.get(u.id)
+            if client is None:
+                continue
+            client.send_event('historyUpdate', self.format_history_record(record))
+
+    @staticmethod
+    def format_history_record(record: "HistoryRecord") -> dict:
+        message = {'text': record.string, 'all': record.all}
+        if record.player1 is not None:
+            message['p1'] = record.player1.id
+        if record.player2 is not None:
+            message['p2'] = record.player2.id
+        return message
+
+
+class HistoryRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    string = db.Column(db.String, nullable=False)
+    all = db.Column(db.Boolean, default=False)
+    player1_id = db.Column(db.Integer, db.ForeignKey('game_player.id'), nullable=True)
+    player1 = db.relationship('GamePlayer', foreign_keys="HistoryRecord.player1_id")
+    player2_id = db.Column(db.Integer, db.ForeignKey('game_player.id'), nullable=True)
+    player2 = db.relationship('GamePlayer', foreign_keys="HistoryRecord.player2_id")
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
 
 
 online_users: Dict[int, "GameClient"] = {}
@@ -215,6 +278,11 @@ class GameClient(SocketComm):
             db.session.add(game)
             db.session.add(bank)
             db.session.add(player)
+
+            record = HistoryRecord(string="The game was stared by %p1%", player1=player, all=True)
+            db.session.add(record)
+            game.update_history(record)
+
             db.session.commit()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
         elif message_type == 'enterGame':
@@ -228,8 +296,13 @@ class GameClient(SocketComm):
             if game not in self.user.games:
                 game.users.append(self.user)
                 player = GamePlayer(name=self.user.name, game=game, user=self.user, money=game.type.config)
+                record = HistoryRecord(string=f"%p1% entered into the game as {player.name}", player1=player, all=True)
                 db.session.add(player)
+                game.update_history(record)
+                db.session.add(record)
+
                 db.session.commit()
+            game.notify_online_players()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
 
         # Game
@@ -241,10 +314,12 @@ class GameClient(SocketComm):
             if self.user not in game.users:
                 return 'returnHomepage', 'You are not allowed to be here'
             self.send_event('players', game.format_players(self.user))
+            self.send_event('playersAll', game.get_all_players())
+            game.send_history(self.user)
             return 'gameInfo', {'name': game.name, 'id': game.id}
 
         game_id = message.get('game')
-        game = Game.query.filter_by(id=game_id).first()
+        game: Game = Game.query.filter_by(id=game_id).first()
         if game is None:
             return 'returnHomepage', 'This game does not exist'
         if self.user not in game.users:
@@ -259,8 +334,15 @@ class GameClient(SocketComm):
             name = message.get('name')
             if not name:
                 return 'playerNameChangeERR', 'Invalid name'
+
+            record = HistoryRecord(string=f"{player.name} has changed it's name to {name}", all=True)
             player.name = name
+
+            game.update_history(record)
+            db.session.add(record)
             db.session.commit()
+
+            game.notify_online_players()
             return 'players', game.format_players(self.user)
         elif message_type == 'modalSend':
             player: GamePlayer = GamePlayer.query.filter_by(id=message.get('player')).first()
@@ -295,10 +377,14 @@ class GameClient(SocketComm):
 
             player.money = json.dumps(p_money)
             recipient.money = json.dumps(r_money)
-            db.session.commit()
 
             for p in (player, recipient):
                 p.notify_transfer(player, recipient, p_money[currency], r_money[currency], currency)
+
+            record = HistoryRecord(string=f"%p1% sent %p2% {amount} {currency}", player1=player, player2=recipient)
+            game.update_history(record)
+            db.session.add(record)
+            db.session.commit()
             return
 
     def send_event(self, event_type: str, event_message: any):
@@ -318,7 +404,7 @@ def page_home():
 
 # noinspection PyUnresolvedReferences
 @html.route('/game/<int:game_id>')
-def page_game(*_):
+def page_game(*_, **__):
     return render_template('game.html')
 
 
