@@ -46,6 +46,7 @@ class GamePlayer(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     user = db.relationship('User', backref=db.backref('characters', lazy=True))
     game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
+    money = db.Column(db.String, nullable=False)
 
 
 class GameType(db.Model):
@@ -174,9 +175,15 @@ class GameClient(SocketComm):
                 return 'openNewGameERR', 'Game with this name already exists'
             game = Game(name=game_name, type=game_type, owner=self.user)
             game.users.append(self.user)
+            bank = GamePlayer(name="Bank", game=game, user=self.user, money=game.type.config, is_infinite=True)
+            player = GamePlayer(name=self.user.name, game=game, user=self.user, money=game.type.config)
+            game.players.append(bank)
+            game.players.append(player)
             if game_password:
                 game.password = game_password
             db.session.add(game)
+            db.session.add(bank)
+            db.session.add(player)
             db.session.commit()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
         elif message_type == 'enterGame':
@@ -189,6 +196,9 @@ class GameClient(SocketComm):
                 return 'gameEnterERR', 'Wrong room password'
             if game not in self.user.games:
                 game.users.append(self.user)
+                player = GamePlayer(name=self.user.name, game=game, user=self.user, money=game.type.config)
+                db.session.add(player)
+                db.session.commit()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
 
     def on_disconnect(self):
