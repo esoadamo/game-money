@@ -40,6 +40,21 @@ function Renderer(variables = null, values = null, functions = null) {
             }
         );
 
+        // render attributes
+        element.querySelectorAll('[r-attr]').forEach(el => {
+                const attrs = JSON.parse(el.getAttribute('r-attr'));
+                Object.keys(attrs).forEach(attr => {
+                    let val;
+                    try {
+                        val = eval(attrs[attr]);
+                    } catch {
+                        val = '';
+                    }
+                    el.setAttribute(attr,`${val}`);
+                });
+            }
+        );
+
         // render if's
         element.querySelectorAll('[r-if]').forEach(el => {
             let render = false;
@@ -91,6 +106,8 @@ function Renderer(variables = null, values = null, functions = null) {
                 el.parentElement.insertBefore(renderedEl, el);
             });
         });
+
+        this.renderElementHeaders(element, localVariables);
     };
 
     this.renderString = (el, str, localVariables = null) => {
@@ -116,7 +133,6 @@ function Renderer(variables = null, values = null, functions = null) {
             el.textContent = eval(el.getAttribute('r-var'));
         }
         if (rAttr !== null) {
-            console.log(rAttr);
             const attrs = JSON.parse(rAttr);
             Object.keys(attrs).forEach(attr => el.setAttribute(attr, eval(attrs[attr])));
         }
