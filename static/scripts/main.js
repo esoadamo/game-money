@@ -1,7 +1,3 @@
-function askText(message, type='text') {
-    return new Promise(resolve => resolve(prompt(message)));
-}
-
 // noinspection JSUnusedLocalSymbols
 let loginComplete = (comm, renderer) => {};
 

@@ -94,7 +94,11 @@
                             <div class="col-md-6">
                                 <div class="table-responsive">
                                     <table class="table">
-                                        <thead><tr><th>Players in game</th></tr></thead>
+                                        <thead>
+                                        <tr>
+                                            <th>Players in game</th>
+                                        </tr>
+                                        </thead>
                                         <tbody>
                                         <tr r-for="playerId of Object.keys(v.playersAll)">
                                             <td r-var="v.playersAll[l.playerId]"></td>
@@ -142,11 +146,11 @@
             };
             renderer.functions.returnHomepage = () => location.pathname = '/';
             renderer.functions.newPlayer = () => {
-              askText("Enter new player's name:").then(r => {
-                if (!r)
-                    return;
-                comm.send('addPlayer', {game: gameId, name: r});
-              });
+                askText("Enter new player's name:").then(r => {
+                    if (!r)
+                        return;
+                    comm.send('addPlayer', {game: gameId, name: r});
+                });
             };
 
             function restoreSelectedPlayer() {
