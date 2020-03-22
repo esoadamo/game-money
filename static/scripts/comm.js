@@ -20,6 +20,7 @@ function Comm() {
         let data;
         try {
             data = JSON.parse(msg.data);
+            console.debug('<- ', data);
         } catch {
             return;
         }
@@ -38,6 +39,7 @@ function Comm() {
             unsentMessages.push(data);
             return false;
         }
+        console.debug('-> ', data);
 
         sock.send(JSON.stringify(data));
         return true;

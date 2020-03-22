@@ -5,14 +5,14 @@ from os import path
 from typing import Optional, Tuple
 from uuid import uuid4 as uuid
 
-from flask import Flask, render_template, Blueprint
+from flask import Flask, render_template, Blueprint, url_for
 from flask_sockets import Sockets
 from gevent import monkey
+# noinspection PyPackageRequirements
 from geventwebsocket.websocket import WebSocket
 from flask_sqlalchemy import SQLAlchemy
 
 monkey.patch_all()
-
 
 html = Blueprint(r'html', __name__)
 soc = Blueprint(r'soc', __name__)
@@ -20,18 +20,25 @@ soc = Blueprint(r'soc', __name__)
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.abspath(path.join(sys.argv[0], path.pardir,
-                                                                               'data', 'db.sqlite'))
+                                                                              'data', 'db.sqlite'))
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 sockets = Sockets(app)
-
-print(app.config["SQLALCHEMY_DATABASE_URI"])
 
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     key = db.Column(db.String, nullable=False)
+
+
+class GamePlayer(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    is_infinite = db.Column(db.Boolean, default=False, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user = db.relationship('User', backref=db.backref('characters', lazy=True))
+    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
 
 
 class GameType(db.Model):
@@ -42,13 +49,14 @@ class GameType(db.Model):
 
 class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
+    name = db.Column(db.String, nullable=False, unique=True)
     password = db.Column(db.String)
 
-    game_type_id = db.Column(db.Integer, db.ForeignKey('game_type.id'), nullable=False)
-    game_type = db.relationship('GameType', backref=db.backref('games', lazy=True))
+    type_id = db.Column(db.Integer, db.ForeignKey('game_type.id'), nullable=False)
+    type = db.relationship('GameType')
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     owner = db.relationship('User', backref=db.backref('users', lazy=True))
+    players = db.relationship('GamePlayer', backref='game', lazy=True)
 
 
 MOCK_GAME = {
@@ -73,11 +81,11 @@ class SocketComm:
             try:
                 msg: Optional[str] = self.__soc.receive()
                 data: dict = json.loads(msg)
-                r = self.on_data(data)
-                if type(r) == dict:
-                    self.send_dict(r)
             except (json.JSONDecodeError, TypeError):
-                pass
+                continue
+            r = self.on_data(data)
+            if type(r) == dict:
+                self.send_dict(r)
         self.on_disconnect()
 
     def on_connect(self):
@@ -134,9 +142,29 @@ class GameClient(SocketComm):
         elif message_type == 'listGameTypes':
             r = []
             for t in GameType.query.all():
-                r.append(t.name)
-            print(r)
+                r.append({'type': t.id, 'name': t.name})
             return 'openNewGameModal', r
+        elif message_type == 'createGame':
+            game_name = message.get('name', '')
+            game_type_id = message.get('type', '')
+            game_password = message.get('password', '')
+
+            print('opening game')
+
+            if not game_name or not game_type_id:
+                return 'openNewGameERR', 'Name or type not filled'
+            game_type = GameType.query.filter_by(id=game_type_id).first()
+            if game_type is None:
+                return 'openNewGameERR', 'This game types does not exist'
+            existing_game = Game.query.filter_by(name=game_name).first()
+            if existing_game is not None:
+                return 'openNewGameERR', 'Game with this name already exists'
+            game = Game(name=game_name, type=game_type, owner=self.user)
+            if game_password:
+                game.password = game_password
+            db.session.add(game)
+            db.session.commit()
+            return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
 
     def on_disconnect(self):
         print('Disconnected')
@@ -149,12 +177,18 @@ def soc_comm(ws: WebSocket):
 
 
 @html.route('/')
-def hello():
-    return render_template('index.html', game=MOCK_GAME, player=MOCK_PLAYER)
+def page_home():
+    return render_template('index.html')
+
+
+@html.route('/game/<int:game_id>')
+def page_game(game_id: int):
+    return render_template('game.html')
 
 
 def main():
     from gevent import pywsgi
+    # noinspection PyPackageRequirements
     from geventwebsocket.handler import WebSocketHandler
 
     db.create_all()

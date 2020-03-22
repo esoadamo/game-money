@@ -54,20 +54,29 @@
                     <form>
                         <div class="form-group">
                             <label for="game-type">Game type:</label>
-                            <select id="game-type" r-val="w.gameType">
+                            <select id="game-type" r-val="w.gameType" class="form-control">
                                 <option r-for="type of v.gameTypes"
-                                        r-val="l.type"
-                                        r-attr="{&quot;value&quot;: &quot;l.type&quot;}">
+                                        r-var="l.type.name"
+                                        r-attr="{&quot;value&quot;: &quot;l.type.type&quot;}">
                                 </option>
                             </select>
 
+                            <label for="game-name">Game name:</label>
+                            <input id="game-name" class="form-control" r-val="w.gameName">
+
                             <label for="game-password">Join password:</label>
-                            <input id="game-password" type="password" r-val="w.gamePassword">
+                            <input id="game-password"
+                                   class="form-control"
+                                   type="password"
+                                   placeholder="Anyone can join"
+                                   r-val="w.gamePassword">
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" data-dismiss="modal">Create</button>
+                    <button type="button" class="btn btn-success" data-dismiss="modal" r-click="f.createNewGame()">
+                        Create
+                    </button>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -92,6 +101,13 @@
             renderer.functions.modalNewGame = () => {
                 comm.send('listGameTypes', '');
             };
+            renderer.functions.createNewGame = () => {
+                const type = renderer.getValue('gameType');
+                const name = renderer.getValue('gameName');
+                const password = renderer.getValue('gamePassword');
+
+                comm.send("createGame", {type, name, password});
+            };
 
             function onMessage(type, msg) {
                 switch (type) {
@@ -113,6 +129,9 @@
                         renderer.variables.gameTypes = msg;
                         $('#modalNewGame').modal('show');
                         renderer.render();
+                        break;
+                    case 'openNewGameERR':
+                        alert(msg);
                         break;
                 }
             }

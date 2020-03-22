@@ -29,8 +29,15 @@ function Renderer(variables = null, values = null, functions = null) {
         );
 
         // render all variables
-        element.querySelectorAll('[r-var]').forEach(
-            el => el.textContent = `${eval(el.getAttribute('r-var'))}`
+        element.querySelectorAll('[r-var]').forEach(el => {
+                let val;
+                try {
+                    val = eval(el.getAttribute('r-var'));
+                } catch {
+                    val = '';
+                }
+                el.textContent = `${val}`;
+            }
         );
 
         // render if's
@@ -102,12 +109,11 @@ function Renderer(variables = null, values = null, functions = null) {
         // noinspection JSUnusedLocalSymbols
         const f = this.functions;
 
-        const rVal = el.getAttribute('r-val');
+        const rVar = el.getAttribute('r-var');
         const rAttr = el.getAttribute('r-attr');
 
-        if (rVal !== null) {
-            console.log('cont',  eval(el.getAttribute('r-val')));
-            el.textContent = eval(el.getAttribute('r-val'));
+        if (rVar !== null) {
+            el.textContent = eval(el.getAttribute('r-var'));
         }
         if (rAttr !== null) {
             console.log(rAttr);
