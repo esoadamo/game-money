@@ -13,6 +13,12 @@ from gevent import monkey
 from geventwebsocket.websocket import WebSocket
 from flask_sqlalchemy import SQLAlchemy
 
+
+CONFIG = {
+    'host': '0.0.0.0',
+    'port': 5000
+}
+
 monkey.patch_all()
 
 html = Blueprint(r'html', __name__)
@@ -453,6 +459,11 @@ def main():
 
     db.create_all()
 
+    config_file = path.join(script_dir, 'data', 'config.json')
+    if path.exists(config_file):
+        with open(config_file, 'r') as f:
+            CONFIG.update(json.load(f))
+
     with open(path.join(script_dir, 'data', 'game-types.json')) as f:
         game_types = json.load(f)
         for game_type_name, game_type_config in game_types.items():
@@ -465,7 +476,7 @@ def main():
                 game_type.config = game_type_config
     db.session.commit()
 
-    server = pywsgi.WSGIServer(('0.0.0.0', 5000), app, handler_class=WebSocketHandler)
+    server = pywsgi.WSGIServer((CONFIG['host'], CONFIG['port']), app, handler_class=WebSocketHandler)
     print('up and running')
     server.serve_forever()
 

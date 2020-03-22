@@ -2,3 +2,5 @@ venv/
 wenv/
 .idea/
 data/db.sqlite
+data/config.json
+__pychache__/
