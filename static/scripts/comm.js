@@ -17,6 +17,9 @@ function Comm() {
     sock.onclose = () => {
         this.opened = false;
         this.onClose();
+    };
+
+    sock.onerror = () => {
         $('#modalConnectionLost').modal({'backdrop': 'static'});
 
         function reconnect() {
@@ -24,6 +27,7 @@ function Comm() {
             sock2.onopen = () => location.reload();
             sock2.onerror = () => setTimeout(() => reconnect());
         }
+
         reconnect();
     };
 
@@ -35,6 +39,11 @@ function Comm() {
         } catch {
             return;
         }
+
+        if (data.type.endsWith('ERR')) {
+            alert(data.message);
+        }
+
         this.onMessage(data.type, data.message);
     };
 

@@ -12,6 +12,21 @@ function Renderer(variables = null, values = null, functions = null) {
         return Object.assign(ctx, localVariables);
     };
 
+    const assignClick = (el, localVariables = null) => {
+        // noinspection JSUnusedLocalSymbols
+        const v = this.variables;
+        // noinspection JSUnusedLocalSymbols
+        const w = this.values;
+        // noinspection JSUnusedLocalSymbols
+        const f = this.functions;
+
+        el.onclick = () => {
+            const l = localContext(el, localVariables);
+            eval(el.getAttribute('r-click'));
+            el.setAttribute('r-local-context', JSON.stringify(l));
+        }
+    };
+
     this.render = (element = null, localVariables = null) => {
         if (element === null) element = document.body;
         if (localVariables === null) localVariables = {};
@@ -31,13 +46,7 @@ function Renderer(variables = null, values = null, functions = null) {
         );
 
         // assign clicks
-        element.querySelectorAll('[r-click]').forEach(el =>
-            el.onclick = () => {
-                const l = localContext(el, localVariables);
-                eval(el.getAttribute('r-click'));
-                el.setAttribute('r-local-context', JSON.stringify(l));
-            }
-        );
+        element.querySelectorAll('[r-click]').forEach(el => assignClick(el, localVariables));
 
         // render all variables
         element.querySelectorAll('[r-var]').forEach(el => {
@@ -156,6 +165,7 @@ function Renderer(variables = null, values = null, functions = null) {
 
         const rVar = el.getAttribute('r-var');
         const rAttr = el.getAttribute('r-attr');
+        const rClick = el.getAttribute('r-click');
 
         if (rVar !== null) {
             let val;
@@ -169,6 +179,9 @@ function Renderer(variables = null, values = null, functions = null) {
         if (rAttr !== null) {
             const attrs = JSON.parse(rAttr);
             Object.keys(attrs).forEach(attr => el.setAttribute(attr, eval(attrs[attr]) || ''));
+        }
+        if (rClick !== null) {
+            assignClick(el, localVariables);
         }
     };
 

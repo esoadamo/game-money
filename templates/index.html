@@ -1,4 +1,8 @@
 {% extends 'base.html' %}
+{% block title %}
+    Game Money
+{% endblock %}
+
 {% block content %}
     <div class="container">
         <div class="col-xs-12">
@@ -13,23 +17,21 @@
         <div class="col-xs-12"><h2>Please, select one of the games:</h2></div>
         <div class="col-xs-12">
             <div class="table-responsive">
-                <table class="table">
+                <table class="table table-games table-hover">
                     <thead>
                     <tr>
                         <th>Game</th>
                         <th>Name</th>
-                        <th>Join</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr r-for="row of v.games">
+                    <tr r-for="row of v.games" class="clickable" r-click="f.enterGame(l.row.id, l.row.password)">
                         <td><span r-var="l.row.game"></span></td>
                         <td><span r-var="l.row.name"></span></td>
-                        <td><i class="btn fa fa-sign-in" r-click="f.enterGame(l.row.id, l.row.password)"></i></td>
                     </tr>
                     <tr>
                         <td colspan="9001"> <!-- it's over nine thousands -->
-                            <button class="btn" r-click="f.modalNewGame()">
+                            <button class="btn btn-primary btn-lg width-100" r-click="f.modalNewGame()">
                                 <i class="fa fa-plus"></i>
                                 Create new game
                             </button>
@@ -80,9 +82,6 @@
                         renderer.variables.games = msg;
                         renderer.render();
                         break;
-                    case 'gameEnterERRR':
-                        alert(msg);
-                        break;
                     case 'gameEnter':
                         window.location.href = msg;
                         break;
@@ -94,9 +93,6 @@
                         renderer.variables.gameTypes = msg;
                         $('#modalNewGame').modal('show');
                         renderer.render();
-                        break;
-                    case 'openNewGameERR':
-                        alert(msg);
                         break;
                 }
             }
@@ -121,7 +117,7 @@
                     <form>
                         <div class="form-group">
                             <label for="game-type">Game type:</label>
-                            <select id="game-type" r-val="w.gameType" class="form-control">
+                            <select id="game-type" r-val="w.gameType" class="form-control input-lg">
                                 <option r-for="type of v.gameTypes"
                                         r-var="l.type.name"
                                         r-attr="{&quot;value&quot;: &quot;l.type.type&quot;}">
@@ -129,11 +125,11 @@
                             </select>
 
                             <label for="game-name">Game name:</label>
-                            <input id="game-name" class="form-control" r-val="w.gameName">
+                            <input id="game-name" class="form-control input-lg" r-val="w.gameName">
 
                             <label for="game-password">Join password:</label>
                             <input id="game-password"
-                                   class="form-control"
+                                   class="form-control input-lg"
                                    type="password"
                                    placeholder="Anyone can join"
                                    r-val="w.gamePassword">
@@ -141,10 +137,10 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" data-dismiss="modal" r-click="f.createNewGame()">
+                    <button type="button" class="btn btn-success btn-lg" data-dismiss="modal" r-click="f.createNewGame()">
                         Create
                     </button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-default btn-lg" data-dismiss="modal">Close</button>
                 </div>
             </div>
 

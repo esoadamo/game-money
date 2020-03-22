@@ -5,6 +5,18 @@ html, body {
     height: 100%;
 }
 
+.table-money, .table-games {
+    font-size: 20px;
+}
+
 .clickable {
     cursor: pointer;
+}
+
+.width-100 {
+    width: 100%;
+}
+
+.row {
+    margin-top: 16px;
 }

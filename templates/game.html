@@ -1,11 +1,23 @@
 {% extends 'base.html' %}
+
 {% block head %}
     <link rel="stylesheet" href="/static/styles/game.css">
 {% endblock %}
 {% block content %}
     <div id="pageContent" class="container">
-        <div class="col-xs-12"><h1 id="gameName" r-var="v.gameName"></h1></div>
-        <div class="col-xs-12">
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="top-menu">
+                    <h1 id="gameName" r-var="v.gameName"></h1>
+                    <span>
+                <button class="btn btn-danger btn-lg" r-click="f.returnHomepage()">
+                    <i class="fa fa-sign-out"></i> Leave
+                </button>
+            </span>
+                </div>
+            </div>
+        </div>
+        <div class="row">
             <ul class="nav nav-tabs">
                 <li class="clickable player-select"
                     r-for="player of v.players"
@@ -30,7 +42,8 @@
                                 </h3>
                             </div>
                             <div class="col-md-6">
-                                <button class="btn" r-click="f.modalSend(l.player.id)"><i class="fa fa-share"></i> Send
+                                <button class="btn btn-lg btn-primary" r-click="f.modalSend(l.player.id)"><i
+                                        class="fa fa-share"></i> Send
                                     money
                                 </button>
                             </div>
@@ -39,7 +52,7 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="table-responsive">
-                                    <table class="table">
+                                    <table class="table table-money">
                                         <thead>
                                         <tr>
                                             <th>Amount</th>
@@ -60,11 +73,28 @@
                                 <div class="table-responsive">
                                     <table class="table">
                                         <thead>
-                                        <tr><th>History</th></tr>
+                                        <tr>
+                                            <th>History</th>
+                                        </tr>
                                         </thead>
                                         <tbody>
                                         <tr r-for="rec of v.history[l.player.id]">
                                             <td r-var="l.rec"></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead><tr><th>Players in game</th></tr></thead>
+                                        <tbody>
+                                        <tr r-for="playerId of Object.keys(v.playersAll)">
+                                            <td r-var="v.playersAll[l.playerId]"></td>
                                         </tr>
                                         </tbody>
                                     </table>
@@ -107,6 +137,7 @@
             renderer.functions.selectPlayer = (playerID) => {
                 selectedPlayer = playerID;
             };
+            renderer.functions.returnHomepage = () => location.pathname = '/';
 
             function restoreSelectedPlayer() {
                 if (selectedPlayer === null) {
@@ -132,35 +163,35 @@
                 const playerIds = renderer.variables.playersAll || {};
                 let bankPlayerId = null;
                 renderer.variables.players.forEach(p => {
-                     renderer.variables.history[p.id] = [];
+                    renderer.variables.history[p.id] = [];
                     if (p.infinite) {
                         bankPlayerId = p.id;
                     }
                 });
                 history.forEach(rec => {
-                   let p1name = null;
-                   let p2name = null;
-                   if ('p1' in rec) p1name = rec.p1 in playerIds ? playerIds[rec.p1] : 'unknown player';
-                   if ('p2' in rec) p2name = rec.p2 in playerIds ? playerIds[rec.p2] : 'unknown player';
+                    let p1name = null;
+                    let p2name = null;
+                    if ('p1' in rec) p1name = rec.p1 in playerIds ? playerIds[rec.p1] : 'unknown player';
+                    if ('p2' in rec) p2name = rec.p2 in playerIds ? playerIds[rec.p2] : 'unknown player';
 
-                   let text = rec.text;
+                    let text = rec.text;
 
-                   if (p1name)
-                       text = text.replace('%p1%', p1name);
-                   if (p2name)
-                       text = text.replace('%p2%', p2name);
+                    if (p1name)
+                        text = text.replace('%p1%', p1name);
+                    if (p2name)
+                        text = text.replace('%p2%', p2name);
 
-                   if (rec.all) {
-                       Object.keys(renderer.variables.history).forEach(
-                           k => renderer.variables.history[k].splice(0, 0, text)
-                       );
-                       return;
-                   }
+                    if (rec.all) {
+                        Object.keys(renderer.variables.history).forEach(
+                            k => renderer.variables.history[k].splice(0, 0, text)
+                        );
+                        return;
+                    }
 
-                   if (p1name && rec.p1 in renderer.variables.history) renderer.variables.history[rec.p1].splice(0, 0, text);
-                   if (p2name && rec.p2 in renderer.variables.history) renderer.variables.history[rec.p2].splice(0, 0, text);
-                   if (bankPlayerId && (!p1name || rec.p1 !== bankPlayerId) && (!p2name || rec.p2 !== bankPlayerId))
-                       renderer.variables.history[bankPlayerId].splice(0, 0, text);
+                    if (p1name && rec.p1 in renderer.variables.history) renderer.variables.history[rec.p1].splice(0, 0, text);
+                    if (p2name && rec.p2 in renderer.variables.history) renderer.variables.history[rec.p2].splice(0, 0, text);
+                    if (bankPlayerId && (!p1name || rec.p1 !== bankPlayerId) && (!p2name || rec.p2 !== bankPlayerId))
+                        renderer.variables.history[bankPlayerId].splice(0, 0, text);
                 });
             }
 
@@ -173,6 +204,7 @@
                         renderer.variables.gameName = msg.name;
                         gameId = msg.id;
                         renderer.render($('#gameName')[0]);
+                        document.querySelector('title').textContent = `Game - ${msg.name}`;
                         break;
                     case 'players':
                         renderer.variables.players = msg;
@@ -202,7 +234,9 @@
                         const modal = $('#modalSendMoney');
                         renderer.variables.otherPlayers = msg.otherPlayers;
                         renderer.variables.currencies = msg.currencies;
+                        const currencyLast = renderer.getValue('currency') || renderer.variables.currencies[0];
                         renderer.render(modal[0]);
+                        renderer.setValue('currency', currencyLast);
                         modal.modal('show');
                         break;
                     case 'moneyTransfer':
@@ -248,7 +282,7 @@
                     <form>
                         <div class="form-group">
                             <label for="recipient">Recipient:</label>
-                            <select id="recipient" r-val="w.recipient" class="form-control">
+                            <select id="recipient" r-val="w.recipient" class="form-control input-lg">
                                 <option r-for="p of v.otherPlayers"
                                         r-var="l.p.name"
                                         r-attr="{&quot;value&quot;: &quot;l.p.id&quot;}">
@@ -258,12 +292,12 @@
                             <label for="amount">Amount to send:</label>
                             <input id="amount"
                                    type="number"
-                                   class="form-control"
+                                   class="form-control input-lg"
                                    r-val="w.amount"
                                    min="0">
 
                             <label for="currency">Currency:</label>
-                            <select id="currency" r-val="w.currency" class="form-control">
+                            <select id="currency" r-val="w.currency" class="form-control input-lg">
                                 <option r-for="c of v.currencies"
                                         r-var="l.c"
                                         r-attr="{&quot;value&quot;: &quot;l.c&quot;}">
@@ -273,10 +307,10 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-success" data-dismiss="modal" r-click="f.sendMoney()">
+                    <button type="button" class="btn btn-success btn-lg" data-dismiss="modal" r-click="f.sendMoney()">
                         Send
                     </button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-default btn-lg" data-dismiss="modal">Cancel</button>
                 </div>
             </div>
 

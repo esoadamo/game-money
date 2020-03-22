@@ -1,18 +1,7 @@
-.game-content {
+.top-menu {
     display: flex;
-    flex-direction: column;
     justify-content: space-between;
-    width: calc(100% - 32px);
-    height: calc(100% - 32px);
-}
-
-.btns {
-    display: flex;
-    justify-content: center;
-}
-
-.btns > .btn {
-    font-size: 50px;
+    align-items: center;
 }
 
 .goods-table {
