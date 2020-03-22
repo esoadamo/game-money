@@ -17,6 +17,14 @@ function Comm() {
     sock.onclose = () => {
         this.opened = false;
         this.onClose();
+        $('#modalConnectionLost').modal({'backdrop': 'static'});
+
+        function reconnect() {
+            const sock2 = new WebSocket(sock.url);
+            sock2.onopen = () => location.reload();
+            sock2.onerror = () => setTimeout(() => reconnect());
+        }
+        reconnect();
     };
 
     sock.onmessage = (msg) => {
