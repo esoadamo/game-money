@@ -3,14 +3,21 @@ function Renderer(variables = null, values = null, functions = null) {
     this.values = values === null ? {} : values;
     this.functions = functions === null ? {} : functions;
 
+    const localContext = (el, localVariables = null) => {
+        localVariables = localVariables !== null ? localVariables : {};
+        const ctxS = el.getAttribute('r-local-context');
+        let ctx = {};
+        if (ctxS !== null)
+            ctx = JSON.parse(ctxS);
+        return Object.assign(ctx, localVariables);
+    };
+
     this.render = (element = null, localVariables = null) => {
         if (element === null) element = document.body;
         if (localVariables === null) localVariables = {};
 
         // noinspection JSUnusedLocalSymbols
         const v = this.variables;
-        // noinspection JSUnusedLocalSymbols
-        const l = localVariables;
         // noinspection JSUnusedLocalSymbols
         const w = this.values;
         // noinspection JSUnusedLocalSymbols
@@ -32,7 +39,9 @@ function Renderer(variables = null, values = null, functions = null) {
         element.querySelectorAll('[r-var]').forEach(el => {
                 let val;
                 try {
+                    const l = localContext(el, localVariables);
                     val = eval(el.getAttribute('r-var'));
+                    el.setAttribute('r-local-context', JSON.stringify(l));
                 } catch {
                     val = '';
                 }
@@ -42,6 +51,7 @@ function Renderer(variables = null, values = null, functions = null) {
 
         // render attributes
         element.querySelectorAll('[r-attr]').forEach(el => {
+                const l = localContext(el, localVariables);
                 const attrs = JSON.parse(el.getAttribute('r-attr'));
                 Object.keys(attrs).forEach(attr => {
                     let val;
@@ -50,13 +60,15 @@ function Renderer(variables = null, values = null, functions = null) {
                     } catch {
                         val = '';
                     }
-                    el.setAttribute(attr,`${val}`);
+                    el.setAttribute(attr, `${val}`);
                 });
+                el.setAttribute('r-local-context', JSON.stringify(l));
             }
         );
 
         // render if's
         element.querySelectorAll('[r-if]').forEach(el => {
+            const l = localContext(el, localVariables);
             let render = false;
             try {
                 render = !!eval(el.getAttribute('r-if'));
@@ -74,8 +86,9 @@ function Renderer(variables = null, values = null, functions = null) {
                 renderedEl.removeAttribute('hidden');
                 renderedEl.removeAttribute('disabled');
 
-                this.renderElementHeaders(renderedEl, localVariables);
+                renderedEl.setAttribute('r-local-context', JSON.stringify(l));
                 this.renderString(renderedEl, el.dataset.content);
+                this.renderElementHeaders(renderedEl, l);
 
                 el.parentElement.insertBefore(renderedEl, el);
             }
@@ -85,6 +98,7 @@ function Renderer(variables = null, values = null, functions = null) {
         element.querySelectorAll('[r-for]').forEach(el => {
             const parts = el.getAttribute('r-for').split(' of ');
             const forVar = parts[0];
+            const l = localContext(el, localVariables);
             const array = eval(parts[1]) || [];
 
             array.forEach(x => {
@@ -98,8 +112,9 @@ function Renderer(variables = null, values = null, functions = null) {
                 renderedEl.removeAttribute('hidden');
                 renderedEl.removeAttribute('disabled');
 
-                const localVariablesCopy = Object.assign({}, localVariables);
+                const localVariablesCopy = Object.assign({}, l);
                 localVariablesCopy[forVar] = x;
+                renderedEl.setAttribute('r-local-context', JSON.stringify(localVariablesCopy));
                 this.renderString(renderedEl, el.dataset.content, localVariablesCopy);
                 this.renderElementHeaders(renderedEl, localVariablesCopy);
 
@@ -117,6 +132,15 @@ function Renderer(variables = null, values = null, functions = null) {
     };
 
     this.renderElementHeaders = (el, localVariables = null) => {
+        if (localVariables === null) {
+            const context = el.getAttribute('r-local-context');
+            if (context !== null) {
+                localVariables = JSON.parse(context);
+            } else {
+                localVariables = {};
+            }
+        }
+
         // noinspection JSUnusedLocalSymbols
         const v = this.variables;
         // noinspection JSUnusedLocalSymbols
@@ -130,14 +154,21 @@ function Renderer(variables = null, values = null, functions = null) {
         const rAttr = el.getAttribute('r-attr');
 
         if (rVar !== null) {
-            el.textContent = eval(el.getAttribute('r-var'));
+            let val;
+            try {
+                val = eval(el.getAttribute('r-var'));
+            } catch {
+                val = '';
+            }
+            el.textContent = val;
         }
         if (rAttr !== null) {
             const attrs = JSON.parse(rAttr);
-            Object.keys(attrs).forEach(attr => el.setAttribute(attr, eval(attrs[attr])));
+            Object.keys(attrs).forEach(attr => el.setAttribute(attr, eval(attrs[attr]) || ''));
         }
     };
 
+    // noinspection JSUnusedGlobalSymbols
     this.fetchAllValues = () => {
         // noinspection JSUnusedLocalSymbols
         const w = this.values;
@@ -170,6 +201,7 @@ function Renderer(variables = null, values = null, functions = null) {
         return this.values[value] = el.value;
     };
 
+    // noinspection JSUnusedGlobalSymbols
     this.setValue = (value, valueValue) => {
         this.values[value] = valueValue;
         document.querySelectorAll(`[r-val="w.${value}"]`).forEach(el => el.value = valueValue);
