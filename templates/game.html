@@ -107,6 +107,22 @@
                                     </table>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="container-fluid" r-if="l.player.infinite">
+                                    <div class="row">
+                                        <div class="col-xs-12"><h4>Admin settings</h4></div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-xs-12">
+                                            <button
+                                                    class="btn btn-lg btn-danger"
+                                                    r-var="v.buttonHide"
+                                                    r-click="f.hideGame()"
+                                            ></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -151,6 +167,9 @@
                         return;
                     comm.send('addPlayer', {game: gameId, name: r});
                 });
+            };
+            renderer.functions.hideGame = () => {
+                comm.send('hideGame', {game: gameId});
             };
 
             function restoreSelectedPlayer() {
@@ -219,6 +238,12 @@
                         gameId = msg.id;
                         renderer.render($('#gameName')[0]);
                         document.querySelector('title').textContent = `Game - ${msg.name}`;
+                        break;
+                    case 'hideGame':
+                        renderer.variables.buttonHide = !msg ? 'Hide game' : 'Show game';
+                        updateHistory();
+                        renderer.render(pageContent);
+                        restoreSelectedPlayer();
                         break;
                     case 'players':
                         renderer.variables.players = msg;

@@ -112,7 +112,13 @@ function Renderer(variables = null, values = null, functions = null) {
             const parts = el.getAttribute('r-for').split(' of ');
             const forVar = parts[0];
             const l = localContext(el, localVariables);
-            const array = eval(parts[1]) || [];
+            let array;
+
+            try {
+                array = eval(parts[1]) || [];
+            } catch {
+                array = [];
+            }
 
             array.forEach(x => {
                 const renderedEl = el.cloneNode(false);

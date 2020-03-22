@@ -13,7 +13,6 @@ from gevent import monkey
 from geventwebsocket.websocket import WebSocket
 from flask_sqlalchemy import SQLAlchemy
 
-
 CONFIG = {
     'host': '0.0.0.0',
     'port': 5000
@@ -83,6 +82,7 @@ class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False, unique=True)
     password = db.Column(db.String)
+    hidden = db.Column(db.Boolean, nullable=False, default=False)
 
     type_id = db.Column(db.Integer, db.ForeignKey('game_type.id'), nullable=False)
     type = db.relationship('GameType')
@@ -90,6 +90,20 @@ class Game(db.Model):
     owner = db.relationship('User')
     players = db.relationship('GamePlayer', backref='game', lazy=True)
     history_records = db.relationship('HistoryRecord', backref='game', lazy=True)
+
+    @staticmethod
+    def list_games(user_id: int):
+        if user_id not in online_users:
+            return
+        r = []
+        for game in Game.query.filter_by(hidden=False).all():
+            r.append({
+                'id': game.id,
+                'name': game.name,
+                'game': game.type.name,
+                'password': game.password is not None
+            })
+        online_users[user_id].send_event('listGames', r)
 
     def notify_online_players(self):
         r = self.get_all_players()
@@ -250,15 +264,8 @@ class GameClient(SocketComm):
 
         # Lobby
         if message_type == 'listGames':
-            r = []
-            for game in Game.query.all():
-                r.append({
-                    'id': game.id,
-                    'name': game.name,
-                    'game': game.type.name,
-                    'password': game.password is not None
-                })
-            return 'listGames', r
+            Game.list_games(self.user.id)
+            return
         elif message_type == 'nameChange':
             self.user.name = message
             db.session.commit()
@@ -298,6 +305,11 @@ class GameClient(SocketComm):
             game.update_history(record)
 
             db.session.commit()
+
+            for u_id in online_users:
+                Game.list_games(u_id)
+
+            self.force_sync()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
         elif message_type == 'enterGame':
             room_id = message.get('id')
@@ -329,6 +341,7 @@ class GameClient(SocketComm):
                 return 'returnHomepage', 'You are not allowed to be here'
             self.send_event('players', game.format_players(self.user))
             self.send_event('playersAll', game.get_all_players())
+            self.send_event('hideGame', game.hidden)
             game.send_history(self.user)
             return 'gameInfo', {'name': game.name, 'id': game.id}
 
@@ -381,6 +394,24 @@ class GameClient(SocketComm):
 
             game.notify_online_players()
             return 'players', game.format_players(self.user)
+        elif message_type == 'hideGame':
+            if game.owner != self.user:
+                return 'hideGameERR', 'Sorry, only owner of the game can do this'
+            game.hidden = not game.hidden
+
+            record = HistoryRecord(string="The game was hidden" if game.hidden else 'The game was shown again',
+                                   all=True)
+            game.update_history(record)
+            db.session.add(record)
+            db.session.commit()
+            self.force_sync()
+
+            for u_id in online_users:
+                Game.list_games(u_id)
+
+            self.force_sync()
+
+            return 'hideGame', game.hidden
         elif message_type == 'modalSend':
             player: GamePlayer = GamePlayer.query.filter_by(id=message.get('player')).first()
             r = {
