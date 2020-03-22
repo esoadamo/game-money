@@ -166,6 +166,9 @@
 
             function onMessage(type, msg) {
                 switch (type) {
+                    case 'returnHomepage':
+                        location.pathname = '/';
+                        break;
                     case 'gameInfo':
                         renderer.variables.gameName = msg.name;
                         gameId = msg.id;

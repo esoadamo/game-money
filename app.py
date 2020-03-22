@@ -1,5 +1,6 @@
 import json
 import sys
+import time
 
 from os import path
 from typing import Optional, Tuple, List, Dict
@@ -192,15 +193,17 @@ class SocketComm:
 
 
 class GameClient(SocketComm):
+    database_sync_time: List[float] = [time.time()]
+
     def __init__(self, ws: WebSocket):
         super().__init__(ws)
         self.logged_in = False
         self.user: Optional[User] = None
+        self.local_sync = time.time()
 
     def on_disconnect(self):
-        user_id = self.user.id
-        if self.user is not None and online_users.get(user_id) is not None:
-            del online_users[user_id]
+        if self.user is not None and self.user.id in online_users:
+            del online_users[self.user.id]
 
     def send_dict(self, data: dict):
         print('->', data)
@@ -233,6 +236,11 @@ class GameClient(SocketComm):
                 online_users[self.user.id] = self
                 return 'login', u.name
             return
+
+        if self.local_sync < self.database_sync_time[0]:
+            print('synchronizing with global database')
+            db.session.commit()
+            self.local_sync = time.time()
 
         # Lobby
         if message_type == 'listGames':
@@ -341,6 +349,7 @@ class GameClient(SocketComm):
             game.update_history(record)
             db.session.add(record)
             db.session.commit()
+            self.force_sync()
 
             game.notify_online_players()
             return 'players', game.format_players(self.user)
@@ -385,7 +394,11 @@ class GameClient(SocketComm):
             game.update_history(record)
             db.session.add(record)
             db.session.commit()
+            self.force_sync()
             return
+
+    def force_sync(self):
+        self.database_sync_time[0] = time.time()
 
     def send_event(self, event_type: str, event_message: any):
         return self.send_dict({'type': event_type, 'message': event_message})
