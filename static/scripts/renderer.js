@@ -16,6 +16,8 @@ function Renderer(variables = null, values = null, functions = null) {
         if (element === null) element = document.body;
         if (localVariables === null) localVariables = {};
 
+        localVariables = localContext(element, localVariables);
+
         // noinspection JSUnusedLocalSymbols
         const v = this.variables;
         // noinspection JSUnusedLocalSymbols

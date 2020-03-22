@@ -3,22 +3,23 @@
     <link rel="stylesheet" href="/static/styles/game.css">
 {% endblock %}
 {% block content %}
-    <div class="container">
+    <div id="pageContent" class="container">
         <div class="col-xs-12"><h1 id="gameName" r-var="v.gameName"></h1></div>
         <div class="col-xs-12">
             <ul class="nav nav-tabs">
                 <li class="clickable" r-for="player of v.players">
                     <a data-toggle="tab"
-                       r-attr="{&quot;href&quot;: &quot;'#tabBlayer' + l.player.id&quot;}"
+                       r-attr="{&quot;href&quot;: &quot;'#tabPlayer' + l.player.id&quot;}"
                        r-var="l.player.name"
+                       r-click="f.selectPlayer(l.player.id)"
                     ></a>
                 </li>
             </ul>
 
             <div class="tab-content">
-                <div class="tab-pane"
+                <div class="tab-pane tab-player"
                      r-for="player of v.players"
-                     r-attr="{&quot;id&quot;: &quot;'tabBlayer' + l.player.id&quot;}">
+                     r-attr="{&quot;id&quot;: &quot;'tabPlayer' + l.player.id&quot;}">
                     <div class="container">
                         <div class="row">
                             <div class="col-md-6">
@@ -26,7 +27,9 @@
                                 </h3>
                             </div>
                             <div class="col-md-6">
-                                <button class="btn"><i class="fa fa-share"></i> Send money</button>
+                                <button class="btn" r-click="f.modalSend(l.player.id)"><i class="fa fa-share"></i> Send
+                                    money
+                                </button>
                             </div>
                         </div>
 
@@ -62,24 +65,87 @@
 {% block script %}
     <script>
         loginComplete = (comm, renderer) => {
+            const pageContent = document.getElementById('pageContent');
             let gameId = null;
+            let selectedPlayer = null;
 
             renderer.functions.changePlayerName = (playerID) => {
                 askText("Enter new name:").then((name) =>
                     comm.send("playerNameChange", {game: gameId, player: playerID, name})
                 );
             };
+            renderer.functions.modalSend = (playerID) => {
+                renderer.variables.sender = playerID;
+                comm.send("modalSend", {game: gameId, player: playerID});
+            };
+            renderer.functions.sendMoney = () => {
+                comm.send("sendMoney", {
+                    game: gameId,
+                    player: renderer.variables.sender,
+                    recipient: renderer.getValue('recipient'),
+                    amount: renderer.getValue('amount'),
+                    currency: renderer.getValue('currency')
+                });
+            };
+            renderer.functions.selectPlayer = (playerID) => {
+                selectedPlayer = playerID;
+            };
+
+            function restoreSelectedPlayer() {
+                if (selectedPlayer === null) {
+                    if (!('players' in renderer.variables))
+                        return;
+                    selectedPlayer = renderer.variables.players[0].id;
+                }
+                const tab = document.getElementById(`tabPlayer${selectedPlayer}`);
+                if (tab) {
+                    document.querySelectorAll('.tab-player').forEach(
+                        e => e.classList.remove('active')
+                    );
+                    tab.classList.add('active');
+                }
+            }
 
             function onMessage(type, msg) {
                 switch (type) {
                     case 'gameInfo':
                         renderer.variables.gameName = msg.name;
                         gameId = msg.id;
-                        renderer.render($('#gameName').elem);
+                        renderer.render($('#gameName')[0]);
                         break;
                     case 'players':
                         renderer.variables.players = msg;
-                        renderer.render();
+                        renderer.render(pageContent);
+                        restoreSelectedPlayer();
+                        break;
+                    case 'openModalSend':
+                        const modal = $('#modalSendMoney');
+                        renderer.variables.otherPlayers = msg.otherPlayers;
+                        renderer.variables.currencies = msg.currencies;
+                        renderer.render(modal[0]);
+                        modal.modal('show');
+                        break;
+                    case 'moneyTransfer':
+                        const recipient = msg.recipient;
+                        const sender = msg.sender;
+                        const amountSender = msg.senderAmount;
+                        const amountRecipient = msg.recipientAmount;
+                        const currency = msg.currency;
+
+                        const localRecipient = renderer.variables.players.find(p => p.id === recipient);
+                        const localSender = renderer.variables.players.find(p => p.id === sender);
+
+                        if (localRecipient) {
+                            localRecipient.money.find(m => m.currency === currency).amount = amountRecipient;
+                        }
+                        if (localSender) {
+                            localSender.money.find(m => m.currency === currency).amount = amountSender;
+                        }
+
+                        if (localRecipient || localSender) {
+                            renderer.render(pageContent);
+                            restoreSelectedPlayer();
+                        }
                         break;
                 }
             }
@@ -88,4 +154,52 @@
             comm.send('gameInfo', location.pathname);
         };
     </script>
+{% endblock %}
+
+{% block modals %}
+    <div class="modal fade" role="dialog" id="modalSendMoney">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    <h4 class="modal-title">Send money</h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label for="recipient">Recipient:</label>
+                            <select id="recipient" r-val="w.recipient" class="form-control">
+                                <option r-for="p of v.otherPlayers"
+                                        r-var="l.p.name"
+                                        r-attr="{&quot;value&quot;: &quot;l.p.id&quot;}">
+                                </option>
+                            </select>
+
+                            <label for="amount">Amount to send:</label>
+                            <input id="amount"
+                                   type="number"
+                                   class="form-control"
+                                   r-val="w.amount"
+                                   min="0">
+
+                            <label for="currency">Currency:</label>
+                            <select id="currency" r-val="w.currency" class="form-control">
+                                <option r-for="c of v.currencies"
+                                        r-var="l.c"
+                                        r-attr="{&quot;value&quot;: &quot;l.c&quot;}">
+                                </option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-dismiss="modal" r-click="f.sendMoney()">
+                        Send
+                    </button>
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
 {% endblock %}

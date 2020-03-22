@@ -2,7 +2,7 @@ import json
 import sys
 
 from os import path
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 from uuid import uuid4 as uuid
 
 from flask import Flask, render_template, Blueprint, url_for
@@ -53,6 +53,18 @@ class GamePlayer(db.Model):
     game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
     money = db.Column(db.String, nullable=False)
 
+    def notify_transfer(self, sender: "GamePlayer", recipient: "GamePlayer",
+                        amount_sender: float, amount_recipient: float, currency: str):
+        client = online_users.get(self.user.id)
+        if client is None:
+            return
+        client.send_event('moneyTransfer', {'sender': sender.id,
+                                            'recipient': recipient.id,
+                                            'senderAmount': amount_sender,
+                                            'recipientAmount': amount_recipient,
+                                            'currency': currency
+                                            })
+
 
 class GameType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -83,16 +95,7 @@ class Game(db.Model):
         return r
 
 
-MOCK_GAME = {
-    'name': 'My Game',
-    'players': []
-}
-
-MOCK_PLAYER = {
-    'name': 'Adam',
-    'goods': [{'name': 'CZK', 'value': 15 * 10 ** 6, 'color': 'green'}],
-    'infinite': False
-}
+online_users: Dict[int, "GameClient"] = {}
 
 
 class SocketComm:
@@ -131,8 +134,17 @@ class GameClient(SocketComm):
         self.logged_in = False
         self.user: Optional[User] = None
 
+    def on_disconnect(self):
+        user_id = self.user.id
+        if self.user is not None and online_users.get(user_id) is not None:
+            del online_users[user_id]
+
+    def send_dict(self, data: dict):
+        print('->', data)
+        super().send_dict(data)
+
     def on_data(self, data: dict) -> Optional[dict]:
-        print('in', data)
+        print('<-', data)
         message_type = data.get('type')
         message = data.get('message')
         if message_type is None or message is None:
@@ -140,7 +152,7 @@ class GameClient(SocketComm):
 
         r = self.on_message(message_type, message)
         if r is not None:
-            return {'type': r[0], 'message': r[1]}
+            return self.send_event(r[0], r[1])
 
     def on_message(self, message_type: str, message: any) -> Optional[Tuple[str, any]]:
         if not self.logged_in:
@@ -155,6 +167,7 @@ class GameClient(SocketComm):
                     return 'unknownUser', 'I don\'t know you'
                 self.logged_in = True
                 self.user = u
+                online_users[self.user.id] = self
                 return 'login', u.name
             return
 
@@ -249,12 +262,47 @@ class GameClient(SocketComm):
             player.name = name
             db.session.commit()
             return 'players', game.format_players(self.user)
+        elif message_type == 'modalSend':
+            player: GamePlayer = GamePlayer.query.filter_by(id=message.get('player')).first()
+            r = {
+                'otherPlayers': [],
+                'currencies': list(json.loads(player.money).keys())
+            }
+            for p2 in game.players:
+                if p2.id == player.id:
+                    continue
+                r['otherPlayers'].append({'name': p2.name, 'id': p2.id})
+            return 'openModalSend', r
+        elif message_type == 'sendMoney':
+            player: GamePlayer = GamePlayer.query.filter_by(id=message.get('player')).first()
+            recipient: GamePlayer = GamePlayer.query.filter_by(id=message.get('recipient')).first()
+            amount = float(message.get('amount', 0))
+            currency = message.get('currency')
+
+            if None in (player, recipient, currency) or amount <= 0:
+                return 'sendMoneyERR', 'Cannot send money'
+
+            p_money = json.loads(player.money)
+            r_money = json.loads(recipient.money)
+            if None in (p_money.get(currency), r_money.get(currency)):
+                return 'sendMoneyERR', 'Invalid currency'
+
+            if p_money.get(currency) < amount and not player.is_infinite:
+                return 'sendMoneyERR', 'Not enought money'
+
+            p_money[currency] -= amount
+            r_money[currency] += amount
+
+            player.money = json.dumps(p_money)
+            recipient.money = json.dumps(r_money)
+            db.session.commit()
+
+            for p in (player, recipient):
+                p.notify_transfer(player, recipient, p_money[currency], r_money[currency], currency)
+            return
 
     def send_event(self, event_type: str, event_message: any):
         return self.send_dict({'type': event_type, 'message': event_message})
-
-    def on_disconnect(self):
-        print('Disconnected')
 
 
 @soc.route('/soc')
@@ -268,8 +316,9 @@ def page_home():
     return render_template('index.html')
 
 
+# noinspection PyUnresolvedReferences
 @html.route('/game/<int:game_id>')
-def page_game(game_id: int):
+def page_game(*_):
     return render_template('game.html')
 
 
