@@ -308,8 +308,8 @@ class GameClient(SocketComm):
                 db.session.add(player)
                 game.update_history(record)
                 db.session.add(record)
-
                 db.session.commit()
+                self.force_sync()
             game.notify_online_players()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
 
@@ -342,10 +342,32 @@ class GameClient(SocketComm):
             name = message.get('name')
             if not name:
                 return 'playerNameChangeERR', 'Invalid name'
+            for p2 in game.players:
+                if p2.id == player.id:
+                    continue
+                if p2.name == name:
+                    return 'playerNameChangeERR', 'Player with this name already exists'
 
             record = HistoryRecord(string=f"{player.name} has changed it's name to {name}", all=True)
             player.name = name
 
+            game.update_history(record)
+            db.session.add(record)
+            db.session.commit()
+            self.force_sync()
+
+            game.notify_online_players()
+            return 'players', game.format_players(self.user)
+        elif message_type == 'addPlayer':
+            name = message.get('name')
+            if not name:
+                return 'addPlayer', 'Invalid name'
+            for p2 in game.players:
+                if p2.name == name:
+                    return 'addPlayerERR', 'Player with this name already exists'
+            player = GamePlayer(name=name, game=game, user=self.user, money=game.type.config)
+            record = HistoryRecord(string=f"%p1% entered into the game as {player.name}", player1=player, all=True)
+            db.session.add(player)
             game.update_history(record)
             db.session.add(record)
             db.session.commit()
@@ -370,8 +392,11 @@ class GameClient(SocketComm):
             amount = float(message.get('amount', 0))
             currency = message.get('currency')
 
-            if None in (player, recipient, currency) or amount <= 0:
-                return 'sendMoneyERR', 'Cannot send money'
+            if None in (player, recipient, currency):
+                return 'sendMoneyERR', 'Invalid information'
+
+            if amount <= 0:
+                return 'sendMoneyERR', 'You cannot send less than (or equal to) 0'
 
             p_money = json.loads(player.money)
             r_money = json.loads(recipient.money)
@@ -379,7 +404,7 @@ class GameClient(SocketComm):
                 return 'sendMoneyERR', 'Invalid currency'
 
             if p_money.get(currency) < amount and not player.is_infinite:
-                return 'sendMoneyERR', 'Not enought money'
+                return 'sendMoneyERR', 'You do not have enought money'
 
             p_money[currency] -= amount
             r_money[currency] += amount

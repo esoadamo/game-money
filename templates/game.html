@@ -29,6 +29,9 @@
                        r-click="f.selectPlayer(l.player.id)"
                     ></a>
                 </li>
+                <li class="clickable player-select">
+                    <button class="btn btn-lg btn-default" r-click="f.newPlayer()"><i class="fa fa-plus"></i></button>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -138,6 +141,13 @@
                 selectedPlayer = playerID;
             };
             renderer.functions.returnHomepage = () => location.pathname = '/';
+            renderer.functions.newPlayer = () => {
+              askText("Enter new player's name:").then(r => {
+                if (!r)
+                    return;
+                comm.send('addPlayer', {game: gameId, name: r});
+              });
+            };
 
             function restoreSelectedPlayer() {
                 if (selectedPlayer === null) {
@@ -237,6 +247,8 @@
                         const currencyLast = renderer.getValue('currency') || renderer.variables.currencies[0];
                         renderer.render(modal[0]);
                         renderer.setValue('currency', currencyLast);
+                        renderer.setValue('recipient', null);
+                        renderer.setValue('amount', null);
                         modal.modal('show');
                         break;
                     case 'moneyTransfer':
