@@ -2,7 +2,7 @@ import json
 import sys
 
 from os import path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 from uuid import uuid4 as uuid
 
 from flask import Flask, render_template, Blueprint, url_for
@@ -38,6 +38,11 @@ class User(db.Model):
     key = db.Column(db.String, nullable=False)
     games = db.relationship('Game', secondary=rel_game_users, lazy='subquery', backref=db.backref('users', lazy=True))
 
+    def characters_in_game(self, game: "Game") -> List["GamePlayer"]:
+        characters = self.characters
+        players = game.players
+        return [ch for ch in players if ch in characters]
+
 
 class GamePlayer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -65,6 +70,17 @@ class Game(db.Model):
     owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     owner = db.relationship('User')
     players = db.relationship('GamePlayer', backref='game', lazy=True)
+
+    def format_players(self, user: User) -> List[dict]:
+        r = []
+        for ch in user.characters_in_game(self):
+            r.append({
+                'name': ch.name,
+                'money': [{'currency': k, 'amount': v} for k, v in json.loads(ch.money).items()],
+                'infinite': ch.is_infinite,
+                'id': ch.id
+            })
+        return r
 
 
 MOCK_GAME = {
@@ -141,6 +157,8 @@ class GameClient(SocketComm):
                 self.user = u
                 return 'login', u.name
             return
+
+        # Lobby
         if message_type == 'listGames':
             r = []
             for game in Game.query.all():
@@ -201,6 +219,20 @@ class GameClient(SocketComm):
                 db.session.commit()
             return 'gameEnter', f"{url_for('html.page_game', game_id=game.id)}"
 
+        # Game
+        elif message_type == 'gameInfo':
+            game_id = int(message.split('/')[-1])
+            game = Game.query.filter_by(id=game_id).first()
+            if game is None:
+                return 'returnHomepage', 'This game does not exist'
+            if self.user not in game.users:
+                return 'returnHomepage', 'You are not allowed to be here'
+            self.send_event('players', game.format_players(self.user))
+            return 'gameInfo', {'name': game.name, 'id': game.id}
+
+    def send_event(self, event_type: str, event_message: any):
+        return self.send_dict({'type': event_type, 'message': event_message})
+
     def on_disconnect(self):
         print('Disconnected')
 
@@ -240,7 +272,7 @@ def main():
                 game_type.config = game_type_config
     db.session.commit()
 
-    server = pywsgi.WSGIServer(('127.0.0.1', 5000), app, handler_class=WebSocketHandler)
+    server = pywsgi.WSGIServer(('0.0.0.0', 5000), app, handler_class=WebSocketHandler)
     print('up and running')
     server.serve_forever()
 

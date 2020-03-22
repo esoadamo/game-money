@@ -3,28 +3,82 @@
     <link rel="stylesheet" href="/static/styles/game.css">
 {% endblock %}
 {% block content %}
-<div class="game-content">
-    <div class="game-name container">
-        <div class="col-md-8"><h1>Game name!</h1></div>
-        <div class="col-md-4"><h2 r-var="v.playerName"></h2><h3 r-if="v.hero"> is a hero!</h3></div>
-    </div>
-    <div class="center-block">
-        <div class="table-responsive">
-            <table class="table goods-table">
-                <tbody>
-                    <tr r-for="name of [1, 2, 3]">
-                        <td r-var="l.name"></td>
-                        <td>  good['value'] if not player['infinite'] else '∞' </td>
-                        <td> good['name'] </td>
-                    </tr>
-                </tbody>
-            </table>
+    <div class="container">
+        <div class="col-xs-12"><h1 id="gameName" r-var="v.gameName"></h1></div>
+        <div class="col-xs-12">
+            <ul class="nav nav-tabs">
+                <li class="clickable" r-for="player of v.players">
+                    <a data-toggle="tab"
+                       r-attr="{&quot;href&quot;: &quot;'#tabBlayer' + l.player.id&quot;}"
+                       r-var="l.player.name"
+                    ></a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane"
+                     r-for="player of v.players"
+                     r-attr="{&quot;id&quot;: &quot;'tabBlayer' + l.player.id&quot;}">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h3 r-var="l.player.name"></h3>
+                            </div>
+                            <div class="col-md-6">
+                                <button class="btn"><i class="fa fa-share"></i> Send money</button>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="table-responsive">
+                                    <table class="table">
+                                        <thead>
+                                        <tr>
+                                            <th>Amount</th>
+                                            <th>Currency</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        <tr r-for="m of l.player.money">
+                                            <td r-if="!l.player.infinite" r-var="l.m.amount"></td>
+                                            <td r-if="l.player.infinite">∞</td>
+                                            <td r-var="l.m.currency"></td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-6">PLACEHOLDER</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="btns">
-            <i class="fa fa-share-square btn"></i>
-        </div>
     </div>
-    <div class="table-responsive bottom-history">
-    </div>
-</div>
+{% endblock %}
+
+{% block script %}
+    <script>
+        loginComplete = (comm, renderer) => {
+            let gameId = null;
+
+            function onMessage(type, msg) {
+                switch (type) {
+                    case 'gameInfo':
+                        renderer.variables.gameName = msg.name;
+                        gameId = msg.id;
+                        renderer.render($('#gameName').elem);
+                        break;
+                    case 'players':
+                        renderer.variables.players = msg;
+                        renderer.render();
+                        break;
+                }
+            }
+
+            comm.onMessage = onMessage;
+            comm.send('gameInfo', location.pathname);
+        };
+    </script>
 {% endblock %}

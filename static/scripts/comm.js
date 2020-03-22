@@ -1,5 +1,8 @@
 function Comm() {
-    const sock = new WebSocket('ws://localhost:5000/soc'); // TODO socket URL
+    const sockProto = location.protocol.toLowerCase().startsWith('https') ? 'wss' : 'ws';
+    const sockURL = `${sockProto}://${location.host}/soc`;
+
+    const sock = new WebSocket(sockURL);
     const unsentMessages = [];
 
     sock.onopen = () => {
