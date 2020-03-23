@@ -92,7 +92,11 @@ class Game(db.Model):
     history_records = db.relationship('HistoryRecord', backref='game', lazy=True)
 
     @staticmethod
-    def list_games(user_id: int):
+    def list_games(user_id: Optional[int] = None, user: Optional[User] = None):
+        if user is None:
+            user = User.query.filter_by(id=user_id).first()
+        else:
+            user_id = user.id
         if user_id not in online_users:
             return
         r = []
@@ -101,7 +105,7 @@ class Game(db.Model):
                 'id': game.id,
                 'name': game.name,
                 'game': game.type.name,
-                'password': game.password is not None
+                'password': game.password is not None and user not in game.users
             })
         online_users[user_id].send_event('listGames', r)
 
@@ -264,7 +268,7 @@ class GameClient(SocketComm):
 
         # Lobby
         if message_type == 'listGames':
-            Game.list_games(self.user.id)
+            Game.list_games(user=self.user)
             return
         elif message_type == 'nameChange':
             self.user.name = message
@@ -317,7 +321,7 @@ class GameClient(SocketComm):
             game = Game.query.filter_by(id=room_id).first()
             if game is None:
                 return 'gameEnterERR', 'This game does not exist'
-            if game.password is not None and game.password != room_password:
+            if game.password is not None and game.password != room_password and self.user not in game.users:
                 return 'gameEnterERR', 'Wrong room password'
             if game not in self.user.games:
                 game.users.append(self.user)
