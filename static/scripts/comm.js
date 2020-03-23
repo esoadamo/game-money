@@ -5,21 +5,14 @@ function Comm() {
     const sock = new WebSocket(sockURL);
     const unsentMessages = [];
 
-    sock.onopen = () => {
-        this.opened = true;
-        this.onOpen();
+    let _connectionLost = false;
+    let _pingTimeout = null;
 
-        while (unsentMessages.length > 0 && this.opened) {
-            this.sendRaw(unsentMessages.pop());
-        }
-    };
+    const connectionLost = () => {
+        if (_connectionLost)
+            return;
+        _connectionLost = true;
 
-    sock.onclose = () => {
-        this.opened = false;
-        this.onClose();
-    };
-
-    sock.onerror = () => {
         $('#modalConnectionLost').modal({'backdrop': 'static'});
 
         function reconnect() {
@@ -31,12 +24,44 @@ function Comm() {
         reconnect();
     };
 
+    const ping = () => {
+        if (_pingTimeout !== null)
+            clearTimeout(_pingTimeout);
+        setTimeout(() =>  {
+            this.send('ping', 'ping');
+            _pingTimeout = setTimeout(() => connectionLost(), 3000);
+        }, (Math.random() * 3000) + 2000);
+    };
+
+    sock.onopen = () => {
+        this.opened = true;
+        this.onOpen();
+
+        ping();
+
+        while (unsentMessages.length > 0 && this.opened) {
+            this.sendRaw(unsentMessages.pop());
+        }
+    };
+
+    sock.onclose = () => {
+        this.opened = false;
+        this.onClose();
+    };
+
+    sock.onerror = connectionLost;
+
     sock.onmessage = (msg) => {
         let data;
         try {
             data = JSON.parse(msg.data);
             console.debug('<- ', data);
         } catch {
+            return;
+        }
+
+        if (data.type === 'pong') {
+            ping();
             return;
         }
 

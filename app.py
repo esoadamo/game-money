@@ -245,6 +245,9 @@ class GameClient(SocketComm):
             return self.send_event(r[0], r[1])
 
     def on_message(self, message_type: str, message: any) -> Optional[Tuple[str, any]]:
+        if message_type == 'ping':
+            return 'pong', 'pong'
+
         if not self.logged_in:
             if message_type == 'register':
                 u = User(name=message, key=uuid().hex)
