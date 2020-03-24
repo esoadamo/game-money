@@ -66,5 +66,5 @@ When you are in game, you can send money to other players in game by pressing th
 
 ## Screenshots
 
-![Screenshot of the game on a smartphone](https://user-images.githubusercontent.com/15877754/77427247-57b30380-6dd6-11ea-9bf9-f94f79d22096.png)
-![Screenshot of the game on a desktop](https://user-images.githubusercontent.com/15877754/77427285-68fc1000-6dd6-11ea-98e8-86c1a48381a6.png)
+<img src="https://user-images.githubusercontent.com/15877754/77427247-57b30380-6dd6-11ea-9bf9-f94f79d22096.png" alt="Screenshot of the game on a smartphone" style="zoom: 50%;" />
+<img src="https://user-images.githubusercontent.com/15877754/77427285-68fc1000-6dd6-11ea-98e8-86c1a48381a6.png" alt="Screenshot of the game on a desktop" style="zoom:50%;" />

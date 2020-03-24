@@ -13,25 +13,35 @@ from gevent import monkey
 from geventwebsocket.websocket import WebSocket
 from flask_sqlalchemy import SQLAlchemy
 
+# GLOBAL CONSTANTS
+
+# Directory where this script is located
+SCRIPT_DIR = path.abspath(path.join(sys.argv[0], path.pardir))
+
+# Config, overridden by data/config.json if exists
 CONFIG = {
     'host': '0.0.0.0',
     'port': 5000
 }
 
-monkey.patch_all()
+# WEB SERVER SETUP section
 
+monkey.patch_all()  # fix sockets
+
+# Different handlers for classic HTTP an WS
 html = Blueprint(r'html', __name__)
 soc = Blueprint(r'soc', __name__)
 
-script_dir = path.abspath(path.join(sys.argv[0], path.pardir))
-
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.join(script_dir, 'data', 'db.sqlite')
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + path.join(SCRIPT_DIR, 'data', 'db.sqlite')
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 sockets = Sockets(app)
 
+# DATABASE
+
+# game <-> user, N-N relation table
 rel_game_users = db.Table('rel-game-users',
                           db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True),
                           db.Column('game_id', db.Integer, db.ForeignKey('game.id'), primary_key=True)
@@ -39,18 +49,37 @@ rel_game_users = db.Table('rel-game-users',
 
 
 class User(db.Model):
+    """
+    User is every device connected to this server
+    The user is identified by his key
+    User can change it's name, join a game, create a game
+    User can be member of more games at the same time
+    User is owner of his players
+    """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
-    key = db.Column(db.String, nullable=False)
+    key = db.Column(db.String, nullable=False, unique=True)
     games = db.relationship('Game', secondary=rel_game_users, lazy='subquery', backref=db.backref('users', lazy=True))
 
     def characters_in_game(self, game: "Game") -> List["GamePlayer"]:
+        """
+        Gets all players belonging to this user inside specified game
+        :param game: game in which are players looked for
+        :return: list of GamePlayer objects inside the game belonging to this user
+        """
         characters = self.characters
         players = game.players
         return [ch for ch in players if ch in characters]
 
 
 class GamePlayer(db.Model):
+    """
+    A game player is an entity that is assigned to a game
+    In this game, a game player can send and receive money
+    The player can be only controlled by his user
+    Player can be infinite, meaning that he has infinite amount of money
+    and is owner of the game
+    """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     is_infinite = db.Column(db.Boolean, default=False, nullable=False)
@@ -497,12 +526,12 @@ def main():
 
     db.create_all()
 
-    config_file = path.join(script_dir, 'data', 'config.json')
+    config_file = path.join(SCRIPT_DIR, 'data', 'config.json')
     if path.exists(config_file):
         with open(config_file, 'r') as f:
             CONFIG.update(json.load(f))
 
-    with open(path.join(script_dir, 'data', 'game-types.json')) as f:
+    with open(path.join(SCRIPT_DIR, 'data', 'game-types.json')) as f:
         game_types = json.load(f)
         for game_type_name, game_type_config in game_types.items():
             game_type_config = json.dumps(game_type_config)
