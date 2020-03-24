@@ -62,4 +62,9 @@ When you are in game, you can send money to other players in game by pressing th
 - Web pages are served using [Flask](https://palletsprojects.com/p/flask/)
 - Communication is done by using [Flask-Sockets](https://github.com/heroku-python/flask-sockets) on the backend and WebSockets on the frontend
 - Communication with the database is done with the help of [Flask-SQLAlchemy](https://flask-sqlalchemy.palletsprojects.com/en/2.x/)
-- Code of web pages is using Flask's templates and [JS Renderer](https://github.com/esoadamo/game-money/blob/master/static/scripts/renderer.js)
+- Code of web pages is using Flask's templates and [JS Renderer](https://github.com/esoadamo/game-money/blob/master/static/scripts/renderer.js) and Bootstrap 3, of course
+
+## Screenshots
+
+![Screenshot of the game on a smartphone](https://user-images.githubusercontent.com/15877754/77427247-57b30380-6dd6-11ea-9bf9-f94f79d22096.png)
+![Screenshot of the game on a desktop](https://user-images.githubusercontent.com/15877754/77427285-68fc1000-6dd6-11ea-98e8-86c1a48381a6.png)
