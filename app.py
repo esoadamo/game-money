@@ -74,13 +74,13 @@ class GamePlayer(db.Model):
 
 class GameType(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
+    name = db.Column(db.String, nullable=False, unique=True)
     config = db.Column(db.String, nullable=False)
 
 
 class Game(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False, unique=True)
+    name = db.Column(db.String, nullable=False)
     password = db.Column(db.String)
     hidden = db.Column(db.Boolean, nullable=False, default=False)
 
