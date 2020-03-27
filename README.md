@@ -67,3 +67,10 @@ When you are in game, you can send money to other players in game by pressing th
 ## Screenshots
 
 Can be found [here](https://github.com/esoadamo/game-money/issues/1).
+
+
+## JS Renderer
+
+Source code: [renderer.js](https://github.com/esoadamo/game-money/blob/master/static/scripts/renderer.js) 
+
+Is a minimalistic renderer created for use with this application. It's main goal is to help the developer with creating the web page by allowing him to write `if` and `for` statements right inside the HTML.
