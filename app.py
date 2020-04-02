@@ -89,7 +89,16 @@ class GamePlayer(db.Model):
     money = db.Column(db.String, nullable=False)
 
     def notify_transfer(self, sender: "GamePlayer", recipient: "GamePlayer",
-                        amount_sender: float, amount_recipient: float, currency: str):
+                        amount_sender: float, amount_recipient: float, currency: str) -> None:
+        """
+        Notifies this user about money transfer
+        :param sender: sender of the money
+        :param recipient: recipient of the money
+        :param amount_sender: how much does have sender left
+        :param amount_recipient: how much  does have recipient left
+        :param currency: the currency used
+        :return: None
+        """
         client = online_users.get(self.user.id)
         if client is None:
             return
@@ -102,12 +111,21 @@ class GamePlayer(db.Model):
 
 
 class GameType(db.Model):
+    """
+    Specifies the type of the game and it's configuration
+    Every game has a GameType
+    """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False, unique=True)
     config = db.Column(db.String, nullable=False)
 
 
 class Game(db.Model):
+    """
+    The game itself, has users, players and owner
+    Can be password protected or hidden
+    Multiple games with the same name can occur
+    """
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     password = db.Column(db.String)
@@ -121,7 +139,14 @@ class Game(db.Model):
     history_records = db.relationship('HistoryRecord', backref='game', lazy=True)
 
     @staticmethod
-    def list_games(user_id: Optional[int] = None, user: Optional[User] = None):
+    def list_games(user_id: Optional[int] = None, user: Optional[User] = None) -> None:
+        """
+        Sends a list of all currently shown games to the user
+        User can be specified by user_id or User object
+        :param user_id: id of User to send to
+        :param user: User to send to
+        :return: None
+        """
         if user is None:
             user = User.query.filter_by(id=user_id).first()
         else:
@@ -138,7 +163,11 @@ class Game(db.Model):
             })
         online_users[user_id].send_event('listGames', r)
 
-    def notify_online_players(self):
+    def notify_online_players(self) -> None:
+        """
+        Sends a list of all players inside this game to all users
+        :return: None
+        """
         r = self.get_all_players()
 
         for u in self.users:
@@ -147,9 +176,19 @@ class Game(db.Model):
             online_users[u.id].send_event('playersAll', r)
 
     def get_all_players(self) -> Dict[int, str]:
+        """
+        Lists all players inside this game
+        :return: {playerID: playerName}
+        """
         return {p.id: p.name for p in self.players}
 
     def format_players(self, user: User) -> List[dict]:
+        """
+        Takes all user's players inside this game and
+        puts them into format readable by the web app
+        :param user: User to find players of
+        :return: [{id, name, infinite, money: [{currency: str, amount: float}]}]
+        """
         r = []
         for ch in user.characters_in_game(self):
             r.append({
@@ -160,12 +199,17 @@ class Game(db.Model):
             })
         return r
 
-    def send_history(self, user: User):
+    def send_history(self, user: User) -> None:
+        """
+        Sends list of relevant history records of this game to user
+        :param user: user receiving the history
+        :return: None
+        """
         rs = []
         for record in self.history_records:
             p1: GamePlayer = record.player1
             p2: GamePlayer = record.player2
-            relevant = self.owner.id == user.id
+            relevant = self.owner.id == user.id  # always send to the game owner
             if not relevant and p1 is not None and p1.user.id == user.id:
                 relevant = True
             elif not relevant and p2 is not None and p2.user.id == user.id:
@@ -178,7 +222,12 @@ class Game(db.Model):
             return
         client.send_event('history', rs)
 
-    def update_history(self, record: "HistoryRecord"):
+    def update_history(self, record: "HistoryRecord") -> None:
+        """
+        Updates history of this game with new record and notifies relevant players
+        :param record: record to be added to the history of this game
+        :return: None
+        """
         self.history_records.append(record)
         if not record.all:
             notified_players = {record.player1, record.player2} - {None}
@@ -193,6 +242,11 @@ class Game(db.Model):
 
     @staticmethod
     def format_history_record(record: "HistoryRecord") -> dict:
+        """
+        Format history record into a dictionary parseable by web app
+        :param record: record to be formatted
+        :return: {text, p1: playerId || None, p2: playerId || None}
+        """
         message = {'text': record.string, 'all': record.all}
         if record.player1 is not None:
             message['p1'] = record.player1.id
@@ -202,6 +256,11 @@ class Game(db.Model):
 
 
 class HistoryRecord(db.Model):
+    """
+    A record holding information about a change in a game
+    Can have up to two assigned players p1 and p2
+    If all is set, then this record is visible to all players in game
+    """
     id = db.Column(db.Integer, primary_key=True)
     string = db.Column(db.String, nullable=False)
     all = db.Column(db.Boolean, default=False)
@@ -212,6 +271,7 @@ class HistoryRecord(db.Model):
     game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
 
 
+# Map of user id -> GameClient for all currenctly online users
 online_users: Dict[int, "GameClient"] = {}
 
 
