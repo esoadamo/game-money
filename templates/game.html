@@ -36,7 +36,7 @@
 
             <div class="tab-content">
                 <div class="tab-pane tab-player"
-                     r-for="player of v.players"
+                     r-for="player of v.playersRendered"
                      r-attr="{&quot;id&quot;: &quot;'tabPlayer' + l.player.id&quot;}">
                     <div class="container">
                         <div class="row">
@@ -63,7 +63,9 @@
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        <tr r-for="m of l.player.money">
+                                        <tr r-for="m of l.player.money"
+                                            r-attr="{&quot;class&quot;: &quot;l.m.class&quot;}"
+                                        >
                                             <td r-if="!l.player.infinite" r-var="l.m.amount"></td>
                                             <td r-if="l.player.infinite">∞</td>
                                             <td r-var="l.m.currency"></td>
@@ -138,6 +140,7 @@
             let gameId = null;
             let selectedPlayer = null;
             let history = [];
+            let timerUpdateMoney = null;
 
             renderer.functions.changePlayerName = (playerID) => {
                 askText("Enter new name:").then((name) =>
@@ -228,6 +231,46 @@
                 });
             }
 
+            function renderMoney() {
+                let renderOccurred = false;
+
+                renderer.variables.playersRendered.forEach((player, playerIndex) => {
+                    const targetMoney = renderer.variables.players[playerIndex].money;
+                    let render = false;
+
+                    player.money.forEach((money, moneyIndex) => {
+                        const delta = targetMoney[moneyIndex].amount - money.amount;
+                        if (delta === 0) {
+                            if (money.animationChange) {
+                                // reset the animation change for next iteration
+                                money.animationChange = null;
+                                money.class = '';
+                                render = true;
+                            }
+                            return;
+                        }
+                        if (!money.animationChange) {
+                            const secondsToFinish = 2;
+                            money.animationChange = Math.abs(delta / (secondsToFinish * 30));
+                            money.class = delta > 0 ? 'alert alert-success' : 'alert alert-danger';
+                        }
+                        money.amount += Math.sign(delta) * Math.min(Math.abs(delta), money.animationChange);
+                        render = true;
+                    });
+
+                    if (render) {
+                        const el = document.getElementById(`tabPlayer${player.id}`).querySelector('.table-money');
+                        renderer.render(el, {player});
+                        renderOccurred = true;
+                    }
+                });
+
+                if (!renderOccurred && timerUpdateMoney) {
+                    clearInterval(timerUpdateMoney);
+                    timerUpdateMoney = null;
+                }
+            }
+
             function onMessage(type, msg) {
                 switch (type) {
                     case 'returnHomepage':
@@ -247,6 +290,7 @@
                         break;
                     case 'players':
                         renderer.variables.players = msg;
+                        renderer.variables.playersRendered = JSON.parse(JSON.stringify(msg));
                         updateHistory();
                         renderer.render(pageContent);
                         restoreSelectedPlayer();
@@ -297,12 +341,8 @@
                             localSender.money.find(m => m.currency === currency).amount = amountSender;
                         }
 
-                        [localRecipient, localSender].forEach(player => {
-                            if (!player)
-                                return;
-                            const el = document.getElementById(`tabPlayer${localRecipient.id}`);
-                            renderer.render(el, {player});
-                        });
+                        if ((localSender || recipient) && !timerUpdateMoney)
+                            timerUpdateMoney = setInterval(() => renderMoney(), 30);
                         break;
                 }
             }
