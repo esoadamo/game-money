@@ -531,6 +531,9 @@ class GameClient(SocketComm):
             if amount <= 0:
                 return 'sendMoneyERR', 'You cannot send less than (or equal to) 0'
 
+            if player.game_id != recipient.game_id:
+                return 'sendMoneyERR', 'Both players must be in the same game!'
+
             p_money = json.loads(player.money)
             r_money = json.loads(recipient.money)
             if None in (p_money.get(currency), r_money.get(currency)):
