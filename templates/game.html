@@ -110,13 +110,22 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="container-fluid" r-if="l.player.infinite">
+                                <div class="container-fluid">
                                     <div class="row">
-                                        <div class="col-xs-12"><h4>Admin settings</h4></div>
+                                        <div class="col-xs-12">
+                                            <h4  r-if="l.player.infinite">Admin settings</h4>
+                                            <h4  r-if="!l.player.infinite">Settings</h4>
+                                        </div>
                                     </div>
                                     <div class="row">
                                         <div class="col-xs-12">
                                             <button
+                                                    class="btn btn-lg btn-default"
+                                                    r-var="v.soundsEnabled ? 'Disable sounds' : 'Enable sounds'"
+                                                    r-click="f.toggleSounds()"
+                                            ></button>
+                                            <button
+                                                     r-if="l.player.infinite"
                                                     class="btn btn-lg btn-danger"
                                                     r-var="v.buttonHide"
                                                     r-click="f.hideGame()"
@@ -142,6 +151,14 @@
             let history = [];
             let timerUpdateMoney = null;
 
+            const soundMoneyIn = new Audio('/static/res/sounds/money_in.mp3');
+
+            renderer.variables.soundsEnabled = false;
+            renderer.functions.toggleSounds = () => {
+                renderer.variables.soundsEnabled = !renderer.variables.soundsEnabled;
+                renderer.render(pageContent);
+                restoreSelectedPlayer();
+            };
             renderer.functions.changePlayerName = (playerID) => {
                 askText("Enter new name:").then((name) =>
                     comm.send("playerNameChange", {game: gameId, player: playerID, name})
@@ -344,6 +361,9 @@
                                 if (globalSender) {
                                     new Popup(`${globalSender} sent you ${delta} ${currency}!`, 5000).show();
                                 }
+
+                                if (renderer.variables.soundsEnabled)
+                                    soundMoneyIn.play();
                             }
                         }
                         if (localSender) {

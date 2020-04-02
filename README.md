@@ -144,3 +144,7 @@ will produce
 
 - after clicking on any name, the alert `I welcome you, ${name}` will appear
 - after clicking on `Print value` button, an alert with the content same as the value of the input will appear
+
+## Used media
+
+- [Money popup sound](https://freesound.org/people/Kastenfrosch/sounds/162464/)
