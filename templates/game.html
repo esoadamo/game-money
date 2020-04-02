@@ -297,10 +297,12 @@
                             localSender.money.find(m => m.currency === currency).amount = amountSender;
                         }
 
-                        if (localRecipient || localSender) {
-                            renderer.render(pageContent);
-                            restoreSelectedPlayer();
-                        }
+                        [localRecipient, localSender].forEach(player => {
+                            if (!player)
+                                return;
+                            const el = document.getElementById(`tabPlayer${localRecipient.id}`);
+                            renderer.render(el, {player});
+                        });
                         break;
                 }
             }
