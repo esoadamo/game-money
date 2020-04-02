@@ -335,7 +335,16 @@
                         const localSender = renderer.variables.players.find(p => p.id === sender);
 
                         if (localRecipient) {
-                            localRecipient.money.find(m => m.currency === currency).amount = amountRecipient;
+                            const money = localRecipient.money.find(m => m.currency === currency);
+                            const delta = amountRecipient - money.amount;
+                            money.amount = amountRecipient;
+
+                            if (selectedPlayer === localRecipient.id) {
+                                let globalSender = renderer.variables.playersAll[sender];
+                                if (globalSender) {
+                                    new Popup(`${globalSender} sent you ${delta} ${currency}!`, 5000).show();
+                                }
+                            }
                         }
                         if (localSender) {
                             localSender.money.find(m => m.currency === currency).amount = amountSender;
