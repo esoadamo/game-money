@@ -148,3 +148,4 @@ will produce
 ## Used media
 
 - [Money popup sound](https://freesound.org/people/Kastenfrosch/sounds/162464/)
+- [Favicon](https://pixabay.com/illustrations/credit-card-icon-financial-2389154/)
