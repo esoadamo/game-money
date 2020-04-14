@@ -27,8 +27,11 @@ window.addEventListener('load', () => {
     let localId = localStorage.getItem('gameMoneyId');
     if (localId === null) {
         askText("Enter your name").then(name => {
-            comm.send("register", name);
-        })
+            if (name)
+                comm.send("register", name);
+            else
+                location.reload();
+        });
     } else {
        comm.send('login', localId);
     }
