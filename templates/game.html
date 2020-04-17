@@ -66,7 +66,7 @@
                                         <tr r-for="m of l.player.money"
                                             r-attr="{&quot;class&quot;: &quot;l.m.class&quot;}"
                                         >
-                                            <td r-if="!l.player.infinite" r-var="l.m.amount"></td>
+                                            <td r-if="!l.player.infinite" r-var="f.formatMoney(l.m.amount)"></td>
                                             <td r-if="l.player.infinite">∞</td>
                                             <td r-var="l.m.currency"></td>
                                         </tr>
@@ -191,6 +191,24 @@
             renderer.functions.hideGame = () => {
                 comm.send('hideGame', {game: gameId});
             };
+            renderer.functions.formatMoney = (val) => {
+                const valStr = `${val}`;
+                const split = valStr.split('.');
+                if (split.length === 1)
+                    return valStr;
+                const whole = split[0];
+                let decimal = split[1];
+                if (decimal.length > 6) {
+                    decimal = decimal.substr(0, decimal.length - 2);
+                    while (decimal.endsWith('0') || decimal.endsWith('9')) {
+                        decimal = decimal.substr(0, decimal.length - 1);
+                    }
+                }
+                if (decimal.length > 4) {
+                    decimal = decimal.substr(0, 5);
+                }
+                return decimal.length ? `${whole}.${decimal}` : whole;
+            }
 
             function restoreSelectedPlayer() {
                 if (selectedPlayer === null) {
@@ -359,7 +377,8 @@
                             if (selectedPlayer === localRecipient.id) {
                                 let globalSender = renderer.variables.playersAll[sender];
                                 if (globalSender) {
-                                    new Popup(`${globalSender} sent you ${delta} ${currency}!`, 5000).show();
+                                    const deltaStr = renderer.functions.formatMoney(delta);
+                                    new Popup(`${globalSender} sent you ${deltaStr} ${currency}!`, 5000).show();
                                 }
 
                                 if (renderer.variables.soundsEnabled)
