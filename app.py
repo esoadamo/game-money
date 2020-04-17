@@ -231,7 +231,7 @@ class Game(db.Model):
         self.history_records.append(record)
         if not record.all:
             notified_players = {record.player1, record.player2} - {None}
-            notified_users = {p.user for p in notified_players}
+            notified_users = {p.user for p in notified_players} | {self.owner}
         else:
             notified_users = set(self.users)
         for u in notified_users:
