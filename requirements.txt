@@ -1,9 +1,9 @@
 click==7.1.2
 Flask==1.1.2
 Flask-Sockets==0.2.1
-gevent==20.6.2
+gevent==20.9.0
 gevent-websocket==0.10.1
-greenlet==0.4.16
+greenlet==0.4.17
 itsdangerous==1.1.0
 Jinja2==2.11.2
 MarkupSafe==1.1.1
