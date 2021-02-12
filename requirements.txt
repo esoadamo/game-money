@@ -5,8 +5,8 @@ gevent==21.1.2
 gevent-websocket==0.10.1
 greenlet==1.0.0
 itsdangerous==1.1.0
-Jinja2==2.11.2
+Jinja2==2.11.3
 MarkupSafe==1.1.1
-pycryptodome==3.9.9
+pycryptodome==3.10.1
 Werkzeug==1.0.1
 Flask-SQLAlchemy
