@@ -1,12 +1,12 @@
-click==8.0.0
+click==8.0.1
 Flask==2.0.0
 Flask-Sockets==0.2.1
 gevent==21.1.2
 gevent-websocket==0.10.1
 greenlet==1.1.0
-itsdangerous==2.0.0
-Jinja2==3.0.0
-MarkupSafe==2.0.0
+itsdangerous==2.0.1
+Jinja2==3.0.1
+MarkupSafe==2.0.1
 pycryptodome==3.10.1
-Werkzeug==2.0.0
+Werkzeug==2.0.1
 Flask-SQLAlchemy
