@@ -1,0 +1,7 @@
+venv/
+wenv/
+.idea/
+.git/
+.gitignore
+data/
+__pychache__/

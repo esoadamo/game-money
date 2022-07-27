@@ -21,7 +21,7 @@ SCRIPT_DIR = path.abspath(path.join(sys.argv[0], path.pardir))
 # Config, overridden by data/config.json if exists
 CONFIG = {
     'host': '0.0.0.0',
-    'port': 5000
+    'port': 8926
 }
 
 # WEB SERVER SETUP section
