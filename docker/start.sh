@@ -14,6 +14,7 @@ docker run \
   -p 8926:8926 \
   -v "$DIR_DATA:/opt/app/data/" \
   -it \
+  --cap-add NET_ADMIN \
   --name gamemoney \
   gamemoney
 

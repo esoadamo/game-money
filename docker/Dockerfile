@@ -3,6 +3,9 @@ ENV DIR_BE /opt/app
 ENV DIR_DATA /opt/app/data
 
 RUN mkdir $DIR_BE && mkdir $DIR_DATA
+RUN apt-get update \
+    && apt-get install -y iptables \
+    && apt-get clean
 WORKDIR $DIR_BE
 EXPOSE 8926
 
