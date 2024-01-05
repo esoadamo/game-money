@@ -4,5 +4,5 @@ gevent==23.9.1
 gevent-websocket==0.10.1
 greenlet==1.1.0
 MarkupSafe==2.0.1
-pycryptodome==3.10.1
+pycryptodome==3.19.1
 Flask-SQLAlchemy==2.5.1
